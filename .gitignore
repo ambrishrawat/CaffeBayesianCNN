@@ -4,8 +4,8 @@
 # Don't ignore classes
 !classes/
 # Don't ignore models
-models/
-models/*
+!models/
+!models/*
 models/vgg16_weights.h5
 !exp/
 !exp/*
@@ -19,3 +19,4 @@ models/vgg16_weights.h5
 !*.jpg
 !*.m
 !*.txt
+!*.prototxt
