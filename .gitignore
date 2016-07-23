@@ -1,0 +1,21 @@
+# Ignore everything
+*
+
+# Don't ignore classes
+!classes/
+# Don't ignore models
+models/
+models/*
+models/vgg16_weights.h5
+!exp/
+!exp/*
+!exp/*/*
+# Don't ignore .gitignore
+!.gitignore
+
+# Now exclude our type
+!*.py
+!*.md
+!*.jpg
+!*.m
+!*.txt
