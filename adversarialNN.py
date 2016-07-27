@@ -30,10 +30,22 @@ def get_proabability_vector(out):
 	num_images = out.shape[0]
 	temp = out.reshape(num_images,10)
 	temp = [softmax(x) for x in temp]
-	return temp
+	return np.array(temp)
 
 def argmax(p):
 	pass
+
+def compute_gradient(image, intended_outcome):
+	predict(image, display_output=False)
+	# Get an empty set of probabilities
+	probs = np.zeros_like(net.blobs['prob'].data)
+	# Set the probability for our intended outcome to 1
+	probs[0][intended_outcome] = 1
+	# Do backpropagation to calculate the gradient for that outcome
+	gradient = net.backward(prob=probs)
+	return gradient['data'].copy()
+
+
 
 #net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelVGG/VGG_CNN_S_deploy.prototxt','/home/ar773/CaffeBayesianCNN/modelVGG/VGG_CNN_S.caffemodel', caffe.TEST)
 
@@ -69,20 +81,20 @@ List of dictionary keys for the network
 '''
 
 for i in range(0,Xt.shape[0]):
-	caffe_input = Xt
+	caffe_input = Xt[i].reshape(1,3,32,32)
+	adv_label = 5
+	correct_label = yt[0]
 	net.blobs['data'].data[...] = caffe_input
-	net.blobs['label'].data[...] = np.array([1])
-	# make a prediction from the kitten pixels
-	out = net.forward(end='accuracy')
-	print 'out ',out
+	net.blobs['label'].data[...] = np.array([adv_label])
+	acc = net.forward(end='accuracy')['accuracy']
+	prob = net.forward(end='pool3')['pool3']
+	prob = get_proabability_vector(prob)
+	print 'acc', acc, ' certainity', prob[0][correct_label-1]
 
-	#net_adv is the target label
-	net_adv = 5
-
+	#net_adv is the target label	
 	#different threshold probabilities to check how much perturbation is required to get a particular adversarial classifictation probability 
 	target_probs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
 
-	T = 10 #(number of classes)
 	caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(len(target_probs))]
 	for target_prob, caffe_input_fooled in zip(target_probs, caffe_input_fooled_probs):
 		net.blobs['data'].data[...] = caffe_input_fooled
