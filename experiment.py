@@ -23,6 +23,7 @@ def get_cifar_image(db, key):
 #net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelVGG/VGG_CNN_S_deploy.prototxt','/home/ar773/CaffeBayesianCNN/modelVGG/VGG_CNN_S.caffemodel', caffe.TEST)
 
 net = caffe.Net('models/train_val.prototxt','models/cifar10_nin.caffemodel', caffe.TEST)
+print 'Data layer input shape:', net.blobs['data'].data.shape
 
 db = plyvel.DB('./cifar-test-leveldb/')
 #db = plyvel.DB('../data/cifar10_nin/cifar-test-leveldb')
@@ -34,12 +35,15 @@ for key, _ in db:
 	x, y = get_cifar_image(db, str(key).zfill(5))
 	Xt += [x]
 	yt += [y]
+	break
 db.close()
 Xt = np.array(Xt)
 yt = np.array(yt)
 
-output = net.forward(Xt)
-print output
+print 'image shape: ', Xt.shape
+net.blobs['data'].data[...] = Xt
+output = net.forward(end='pool3')
+print output['pool3']
 #with open('./cifar10_gcn.pkl', 'wb') as handle:
 #	pickle.dump([Xt, yt], handle)
 

@@ -17,7 +17,7 @@ layers {
   top: "label"
   data_param {
     source: "/home/ar773/CaffeBayesianCNN/cifar-test-leveldb"
-    batch_size: 100
+    batch_size: 1
   }
   include: { phase: TEST }
 }
