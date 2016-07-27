@@ -12,54 +12,70 @@ import plyvel
 import pickle
 
 
-#load the network (lenet_all_dropout_train_test.prototxt)
-net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelAllDropout/lenet_all_dropout_train_test.prototxt','/home/ar773/CaffeBayesianCNN/modelAllDropout/cifar10_uncertainty_data/lenet_all_dropout_iter_100000.caffemodel', caffe.TEST)
+def softmax(w, t = 1.0):
+	e = np.exp(w/t)
+	dist = e / np.sum(e)
+	return dist
 
-#load the network (lenet_all_dropout_sampleTest_deploy.prototxt)
-net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelAllDropout/lenet_all_dropout_sampleTest_deploy.prototxt','/home/ar773/CaffeBayesianCNN/modelAllDropout/cifar10_uncertainty_data/lenet_all_dropout_iter_100000.caffemodel', caffe.TEST)
+def get_cifar_image(db, key):
+	raw_datum = db.get(key)
+	datum = caffe.proto.caffe_pb2.Datum()
+	datum.ParseFromString(raw_datum)
+	flat_x = np.array(datum.float_data)
+	x = flat_x.reshape(datum.channels, datum.height, datum.width)
+	y = datum.label
+	return x, y
 
-#load the lmbd data set
-lmdb_env = lmdb.open('/home/ar773/packages/caffe/examples/cifar10/cifar10_test_lmdb/')
-lmdb_txn = lmdb_env.begin()
-lmdb_cursor = lmdb_txn.cursor()
-datum = caffe.proto.caffe_pb2.Datum()
+def get_proabability_vector(out):
+	num_images = out.shape[0]
+	temp = out.reshape(num_images,10)
+	temp = [softmax(x) for x in temp]
+	return temp
 
-#transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
+def argmax(p):
+	pass
 
-#check the dictionary of layers
+#net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelVGG/VGG_CNN_S_deploy.prototxt','/home/ar773/CaffeBayesianCNN/modelVGG/VGG_CNN_S.caffemodel', caffe.TEST)
+
+net = caffe.Net('models/train_val.prototxt','models/cifar10_nin.caffemodel', caffe.TEST)
+print 'Data layer input shape:', net.blobs['data'].data.shape, 'Label layer input shape:', net.blobs['label'].data.shape,
+
+db = plyvel.DB('./cifar-test-leveldb/')
+#db = plyvel.DB('../data/cifar10_nin/cifar-test-leveldb')
+
+Xt = []
+yt = []
+count = 0
+for key, _ in db:
+	#print key
+	if count==4:
+		x, y = get_cifar_image(db, str(key).zfill(5))
+		Xt += [x]
+		yt += [y]
+		break
+	count+=1
+db.close()
+Xt = np.array(Xt)
+yt = np.array(yt)
+
+print 'Xt shape: ', Xt.shape, ' Yt shape', yt, yt.shape
 print list(net.blobs.keys())
 
 '''
 List of dictionary keys for the network
 
-['data', 'label', 'label_cifar_1_split_0', 'label_cifar_1_split_1', 'conv1', 'dropC1', 'pool1', 'conv2', 'dropC2', 'pool2', 'ip1', 'relu1', 'drop1', 'ip2', 'ip2_ip2_0_split_0', 'ip2_ip2_0_split_1', 'accuracy', 'loss']
+['data', 'label', 'label_cifar_1_split_0', 'label_cifar_1_split_1', 'conv1', 'cccp1', 'cccp2', 'pool1', 'conv2', 'cccp3', 'cccp4', 'pool2', 'conv3', 'cccp5', 'cccp6', 'pool3', 'pool3_pool3_0_split_0', 'pool3_pool3_0_split_1', 'accuracy', 'loss']
+
 '''
 
-for key, value in lmdb_cursor:
-
-	datum = caffe.proto.caffe_pb2.Datum()
-	datum.ParseFromString(value)
-
-	label = int(datum.label)
-	image = caffe.io.datum_to_array(datum)
-	image = image.astype(np.uint8)
-
-	print label
-
-	print 'Data layer input shape:', net.blobs['data'].data.shape
-	caffe_input = np.asarray([image])
-	print 'Image shape', caffe_input.shape
-	
-
+for i in range(0,Xt.shape[0]):
+	caffe_input = Xt
 	net.blobs['data'].data[...] = caffe_input
+	net.blobs['label'].data[...] = np.array([1])
 	# make a prediction from the kitten pixels
-	out = net.forward(end='softmax')
-	print out
+	out = net.forward(end='accuracy')
+	print 'out ',out
 
-	# extract the most likely prediction
-	print("Predicted class is #{}.".format(out['ip2'][0].argmax()))
-	#input image
-	
 	#net_adv is the target label
 	net_adv = 5
 
@@ -69,7 +85,10 @@ for key, value in lmdb_cursor:
 	T = 10 #(number of classes)
 	caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(len(target_probs))]
 	for target_prob, caffe_input_fooled in zip(target_probs, caffe_input_fooled_probs):
-		prob = net.forward(data=caffe_input_fooled, end='softmax')['softmax']
+		net.blobs['data'].data[...] = caffe_input_fooled
+		out = net.forward(end='pool3')['pool3']
+		out = get_proabability_vector(out)
+		print 'prob ',np.sum(out)
 		highest_ind = prob.argmax()
 		new_ind_prob = prob[:,new_ind].min()
 		i = 0

@@ -125,7 +125,7 @@ layers {
   top: "pool1"
   dropout_param {
     dropout_ratio: 0.5
-    sample_weights_test: true
+    #sample_weights_test: true
   }
 }
 layers {
@@ -232,7 +232,7 @@ layers {
   top: "pool2"
   dropout_param {
     dropout_ratio: 0.5
-    sample_weights_test: true
+    #sample_weights_test: true
   }
 }
 layers {
