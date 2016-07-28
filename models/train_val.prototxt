@@ -1,26 +1,9 @@
 name: "CIFAR10_full"
-layers {
-  name: "cifar"
-  type: DATA
-  top: "data"
-  top: "label"
-  data_param {
-    source: "/home/ar773/CaffeBayesianCNN/cifar-train-leveldb"
-    batch_size: 128
-  }
-  include: { phase: TRAIN }
-}
-layers {
-  name: "cifar"
-  type: DATA
-  top: "data"
-  top: "label"
-  data_param {
-    source: "/home/ar773/CaffeBayesianCNN/cifar-test-leveldb"
-    batch_size: 1
-  }
-  include: { phase: TEST }
-}
+input: "data"
+input_dim: 1
+input_dim: 3
+input_dim: 32
+input_dim: 32
 layers {
   name: "conv1"
   type: CONVOLUTION
@@ -332,18 +315,10 @@ layers {
     stride: 1
   }
 }
+
 layers {
-  name: "accuracy"
-  type: ACCURACY
+  name: "softmax"
+  type: SOFTMAX
   bottom: "pool3"
-  bottom: "label"
-  top: "accuracy"
-  include: { phase: TEST }
-}
-layers {
-  name: "loss"
-  type: SOFTMAX_LOSS
-  bottom: "pool3"
-  bottom: "label"
-  top: "loss"
+  top: "softmax"
 }
