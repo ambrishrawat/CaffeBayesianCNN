@@ -12,11 +12,29 @@ import plyvel
 import pickle
 
 
-#load the network (lenet_all_dropout_train_test.prototxt)
-net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelAllDropout/lenet_all_dropout_train_test.prototxt','/home/ar773/CaffeBayesianCNN/modelAllDropout/cifar10_uncertainty_data/lenet_all_dropout_iter_100000.caffemodel', caffe.TEST)
+def softmax(w, t = 1.0):
+	e = np.exp(w/t)
+	dist = e / np.sum(e)
+	return dist
 
-#load the network (lenet_all_dropout_sampleTest_deploy.prototxt)
-#net = caffe.Net('/home/ar773/CaffeBayesianCNN/modelAllDropout/lenet_all_dropout_sampleTest_deploy.prototxt','/home/ar773/CaffeBayesianCNN/modelAllDropout/cifar10_uncertainty_data/lenet_all_dropout_iter_100000.caffemodel', caffe.TEST)
+def get_cifar_image(db, key):
+	raw_datum = db.get(key)
+	datum = caffe.proto.caffe_pb2.Datum()
+	datum.ParseFromString(raw_datum)
+	flat_x = np.array(datum.float_data)
+	x = flat_x.reshape(datum.channels, datum.height, datum.width)
+	y = datum.label
+	return x, y
+
+def get_proabability_vector(out):
+	num_images = out.shape[0]
+	temp = out.reshape(10)
+	return temp
+
+#load the network (lenet_all_dropout_train_test.prototxt)
+net = caffe.Net('/home/ar773/CaffeBayesianCNN/bcnn/lenet_all_dropout_deploy.prototxt','/home/ar773/CaffeBayesianCNN/bcnn/lenet_all_dropout_iter_100000.caffemodel', caffe.TEST)
+
+
 
 #load the lmbd data set
 lmdb_env = lmdb.open('/home/ar773/packages/caffe/examples/cifar10/cifar10_test_lmdb/')
@@ -42,58 +60,45 @@ for key, value in lmdb_cursor:
 
 	label = int(datum.label)
 	image = caffe.io.datum_to_array(datum)
-	image = image.astype(np.uint8)
+	image = image.astype(np.float32)
 
 	print label
+	adv_label = 1
 
 	print 'Data layer input shape:', net.blobs['data'].data.shape
 	caffe_input = np.asarray([image])
 	print 'Image shape', caffe_input.shape
 	
 
+	net.blobs['data'].reshape(*caffe_input.shape)
 	net.blobs['data'].data[...] = caffe_input
-	# make a prediction from the kitten pixels
-	out = net.forward(end='softmax')
-	print out
+	net.forward()
 
-	# extract the most likely prediction
-	print("Predicted class is #{}.".format(out['ip2'][0].argmax()))
-	#input image
-	
-	#net_adv is the target label
-	net_adv = 5
-
-	#different threshold probabilities to check how much perturbation is required to get a particular adversarial classifictation probability 
-	target_probs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
-
-	T = 10 #(number of classes)
+	target_probs = [0.6] #[0.1,0.2,0.3,0.4,0.5,0.6]
 	caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(len(target_probs))]
 	for target_prob, caffe_input_fooled in zip(target_probs, caffe_input_fooled_probs):
-		prob = net.forward(data=caffe_input_fooled, end='softmax')['softmax']
-		highest_ind = prob.argmax()
-		new_ind_prob = prob[:,new_ind].min()
-		i = 0
 
-		while new_ind_prob < target_prob:
-			prob = net.forward(data=caffe_input_fooled, label=np.zeros((T,1,1,1)))['prob']
-		
-		prob[:,new_ind] -= 1.
 
-		net.blobs['data'].diff[...] = prob[:,None,None,:]
-		net._backward(list(net._layer_names).index('data'), 0)
+		adv_prob = 0.0
+		temp_prob = []		
 
-		#add gradients with respect to the 'data' layer
-		caffe_input_fooled -= net.blobs['data'].diff * 1e2
+		for _ in xrange(10):
+		#while adv_prob < target_prob:
 
-		prob = net.forward(data=caffe_input_fooled, end='softmax')['softmax']
-		highest_ind = prob.argmax()
-		new_ind_prob = prob[:,new_ind].min()
-		i += 1
-		if i % 1 == 0:
-			print net.blobs[''].diff.sum()
-			print highest_ind
-			print new_ind_prob
-			prob = net2.forward(data=caffe_input_fooled, label=np.zeros((T,1,1,1)))['prob']
-			print prob.argmax()
-			print prob[:,new_ind]
-			print
+			net.blobs['data'].reshape(*caffe_input_fooled.shape)
+			net.blobs['data'].data[...] = caffe_input_fooled
+			net.forward(data=caffe_input_fooled)
+			prob = net.blobs['softmax'].data.copy()
+			#print prob
+			adv_prob = get_proabability_vector(prob)
+			#print adv_prob
+			adv_prob = adv_prob[adv_label]
+			prob[:,adv_label] -= 1.
+			net.blobs['ip2'].diff[...] = prob[:,None,None,:]
+			#print prob
+			net._backward(list(net._layer_names).index('ip2'), 0)			
+			#net.backward(softmax=prob)
+			print net.blobs['drop1'].diff
+			caffe_input_fooled -= net.blobs['data'].diff * 1e2
+	
+	break	

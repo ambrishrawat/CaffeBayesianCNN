@@ -5,8 +5,8 @@ from PIL import Image
 import caffe
 import lmdb
 from collections import defaultdict
-caffe.set_device(0)
-caffe.set_mode_gpu()
+#caffe.set_device(0)
+caffe.set_mode_cpu()
 
 import plyvel
 import pickle
@@ -70,7 +70,7 @@ List of dictionary keys for the network
 adv_label = 1
 
 
-for i in xrange(0,Xt.shape[0]):
+for i in xrange(0,Xt.shape[0]-1):
 	caffe_input = Xt[i].reshape(1,3,32,32)
 	net.blobs['data'].reshape(*caffe_input.shape)
 	net.blobs['data'].data[...] = caffe_input
@@ -84,21 +84,22 @@ for i in xrange(0,Xt.shape[0]):
 		adv_prob = 0.0
 		temp_prob = []		
 
-		for _ in xrange(10):
+		for _ in xrange(1):
 		#while adv_prob < target_prob:
 
-			net.blobs['data'].reshape(*caffe_input.shape)
-			net.blobs['data'].data[...] = caffe_input
+			net.blobs['data'].reshape(*caffe_input_fooled.shape)
+			net.blobs['data'].data[...] = caffe_input_fooled
 			net.forward(data=caffe_input_fooled)
-			prob = net.blobs['softmax'].data
+			prob = net.blobs['softmax'].data.copy()
 
 			adv_prob = get_proabability_vector(prob)
 			#print adv_prob
 			adv_prob = adv_prob[adv_label]
-			prob[:,adv_label] -= 1.
-			net.blobs['pool3'].diff[...] = prob[:,None,None,:]
-			net._backward(list(net._layer_names).index('pool3'),0)
-			print net.blobs['cccp3'].diff
+			prob[:,adv_label] = 1.
+			#net.blobs['pool3'].diff[...] = prob[:,None,None,:]
+			print prob
+			net.backward(softmax=prob)
+			#print net.blobs['pool3'].diff
 			caffe_input_fooled -= net.blobs['data'].diff * 1e2
 	
 		
