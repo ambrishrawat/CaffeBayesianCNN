@@ -53,6 +53,8 @@ List of dictionary keys for the network
 ['data', 'label', 'label_cifar_1_split_0', 'label_cifar_1_split_1', 'conv1', 'dropC1', 'pool1', 'conv2', 'dropC2', 'pool2', 'ip1', 'relu1', 'drop1', 'ip2', 'ip2_ip2_0_split_0', 'ip2_ip2_0_split_1', 'accuracy', 'loss']
 '''
 
+
+
 for key, value in lmdb_cursor:
 
 	datum = caffe.proto.caffe_pb2.Datum()
@@ -61,6 +63,8 @@ for key, value in lmdb_cursor:
 	label = int(datum.label)
 	image = caffe.io.datum_to_array(datum)
 	image = image.astype(np.float32)
+
+	accumulate = []
 
 	print label
 	adv_label = 1
@@ -74,8 +78,9 @@ for key, value in lmdb_cursor:
 	net.blobs['data'].data[...] = caffe_input
 	net.forward()
 
-	target_probs = [0.6] #[0.1,0.2,0.3,0.4,0.5,0.6]
+	target_probs = [0.1] #[0.1,0.2,0.3,0.4,0.5,0.6]
 	caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(len(target_probs))]
+
 	for target_prob, caffe_input_fooled in zip(target_probs, caffe_input_fooled_probs):
 
 
@@ -85,20 +90,21 @@ for key, value in lmdb_cursor:
 		for _ in xrange(10):
 		#while adv_prob < target_prob:
 
-			net.blobs['data'].reshape(*caffe_input_fooled.shape)
+			#net.blobs['data'].reshape(*caffe_input_fooled.shape)
 			net.blobs['data'].data[...] = caffe_input_fooled
-			net.forward(data=caffe_input_fooled)
+			net.forward()
 			prob = net.blobs['softmax'].data.copy()
 			#print prob
+			
 			adv_prob = get_proabability_vector(prob)
-			#print adv_prob
 			adv_prob = adv_prob[adv_label]
-			prob[:,adv_label] -= 1.
-			net.blobs['ip2'].diff[...] = prob[:,None,None,:]
-			#print prob
-			net._backward(list(net._layer_names).index('ip2'), 0)			
-			#net.backward(softmax=prob)
-			print net.blobs['drop1'].diff
-			caffe_input_fooled -= net.blobs['data'].diff * 1e2
+			print adv_prob
+			accumulate.append(adv_prob)
+			prob[:,adv_label] = 1.
+			prob[:,label] = 0.
+
+			net.backward(softmax=prob)
+			np.count_nonzero(net.blobs['softmax'].diff)	
+			caffe_input_fooled -= net.blobs['data'].diff * 1e10
 	
 	break	
