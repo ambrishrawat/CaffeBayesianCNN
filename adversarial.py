@@ -87,7 +87,7 @@ for key, value in lmdb_cursor:
 		adv_prob = 0.0
 		temp_prob = []		
 
-		for _ in xrange(10):
+		for _ in xrange(1):
 		#while adv_prob < target_prob:
 
 			#net.blobs['data'].reshape(*caffe_input_fooled.shape)
@@ -95,16 +95,17 @@ for key, value in lmdb_cursor:
 			net.forward()
 			prob = net.blobs['softmax'].data.copy()
 			#print prob
-			
+			temp = prob.reshape((10,)).argmax()
+			print temp,label
 			adv_prob = get_proabability_vector(prob)
 			adv_prob = adv_prob[adv_label]
-			print adv_prob
+			#print adv_prob
 			accumulate.append(adv_prob)
 			prob[:,adv_label] = 1.
 			prob[:,label] = 0.
-
+			np.count_nonzero(prob)	
 			net.backward(softmax=prob)
-			np.count_nonzero(net.blobs['softmax'].diff)	
+			#print np.count_nonzero(net.blobs['softmax'].diff)	
 			caffe_input_fooled -= net.blobs['data'].diff * 1e10
 	
-	break	
+		
