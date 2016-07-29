@@ -27,9 +27,8 @@ def get_cifar_image(db, key):
 	y = datum.label
 	return x, y
 
-def get_proabability_vector(out):
-	num_images = out.shape[0]
-	temp = out.reshape(10)
+def get_proabability_vector(out,numsamples):
+	temp = out.reshape(10,numsamples)
 	return temp
 
 
@@ -68,45 +67,49 @@ List of dictionary keys for the network
 
 '''
 adv_label = 1
+num_samples = 100
+num_iter = 1
 
-accumulate = []
+c_prob = np.zeros((num_iter,num_samples))
 
 for i in xrange(0,Xt.shape[0]-1):
 	caffe_input = Xt[i].reshape(1,3,32,32)
-	net.blobs['data'].reshape(*caffe_input.shape)
-	net.blobs['data'].data[...] = caffe_input
-	net.forward()
+
 
 	target_probs = [0.6] #[0.1,0.2,0.3,0.4,0.5,0.6]
-	caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(len(target_probs))]
-	for target_prob, caffe_input_fooled in zip(target_probs, caffe_input_fooled_probs):
-
-
+	caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(num_samples)]
+	for target_prob in target_probs:
+		caffe_input_fooled = np.array(caffe_input_fooled_probs).reshape(num_samples,3,32,32)
 		adv_prob = 0.0
 		temp_prob = []		
 
-		for _ in xrange(10):
+		for c_iter in xrange(num_iter):
 		#while adv_prob < target_prob:
 
+			print net.blobs['data'].data.shape, 'input data shape ', caffe_input_fooled.shape
 			#net.blobs['data'].reshape(*caffe_input_fooled.shape)
 			net.blobs['data'].data[...] = caffe_input_fooled
 			net.forward()
 			prob = net.blobs['softmax'].data.copy()
-			#print prob
-			adv_prob = get_proabability_vector(prob)
-			adv_prob = adv_prob[adv_label]
-			accumulate.append(adv_prob)
-			prob[:,adv_label] = 1.
+			print prob.shape
+			
+			adv_prob = get_proabability_vector(prob,num_samples)
+			
+						
+			adv_prob = adv_prob[adv_label,:].reshape((num_samples,))
+			print 'yoda', adv_prob
+			c_prob[c_iter,:] = adv_prob
+			prob[:,adv_label] -= 1.
 			#print net.blobs['pool3'].diff.shape
-
-			#net.blobs['pool3'].diff[...] = prob[:,None,None,:]
-			#net._backward(list(net._layer_names).index('softmax'), 0)			
+			print adv_prob
+			net.blobs['pool3'].diff[...] = prob[:,None,None,:]
+			net._backward(list(net._layer_names).index('pool3'), 0)			
 			#print net.blobs['pool3'].diff
-			net.backward(softmax=prob)
-			print np.count_nonzero(net.blobs['softmax'].diff)	
+			#net.backward(softmax=prob)
+			#print np.count_nonzero(net.blobs['softmax'].diff)	
 			#print net.blobs['pool3'].diff
 			#print net.blobs['pool3'].diff
-			caffe_input_fooled -= net.blobs['data'].diff * 1e2
+			caffe_input_fooled -= net.blobs['data'].diff * 1e-2
 	
 		
 		'''
@@ -134,6 +137,6 @@ for i in xrange(0,Xt.shape[0]-1):
 		'''
 
 pylab.plot(accumulate)
-#pylab.show()
+pylab.show()
 
 

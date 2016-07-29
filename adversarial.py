@@ -10,7 +10,7 @@ caffe.set_mode_gpu()
 
 import plyvel
 import pickle
-
+import pylab
 
 def softmax(w, t = 1.0):
 	e = np.exp(w/t)
@@ -67,7 +67,7 @@ for key, value in lmdb_cursor:
 	accumulate = []
 
 	print label
-	adv_label = 1
+	adv_label = 6
 
 	print 'Data layer input shape:', net.blobs['data'].data.shape
 	caffe_input = np.asarray([image])
@@ -87,7 +87,7 @@ for key, value in lmdb_cursor:
 		adv_prob = 0.0
 		temp_prob = []		
 
-		for _ in xrange(1):
+		for _ in xrange(100):
 		#while adv_prob < target_prob:
 
 			#net.blobs['data'].reshape(*caffe_input_fooled.shape)
@@ -96,16 +96,18 @@ for key, value in lmdb_cursor:
 			prob = net.blobs['softmax'].data.copy()
 			#print prob
 			temp = prob.reshape((10,)).argmax()
-			print temp,label
+			#print temp,label
 			adv_prob = get_proabability_vector(prob)
 			adv_prob = adv_prob[adv_label]
-			#print adv_prob
+			print adv_prob
+			
 			accumulate.append(adv_prob)
-			prob[:,adv_label] = 1.
-			prob[:,label] = 0.
+			prob[:,adv_label] = -1.
+			net.blobs['ip2'].diff[...] = prob[:,None,None,:]
 			np.count_nonzero(prob)	
-			net.backward(softmax=prob)
+			net._backward(list(net._layer_names).index('ip2'), 0)
 			#print np.count_nonzero(net.blobs['softmax'].diff)	
-			caffe_input_fooled -= net.blobs['data'].diff * 1e10
-	
-		
+			caffe_input_fooled -= net.blobs['data'].diff * 1e-1	
+	break	
+pylab.plot(accumulate)
+pylab.show()
