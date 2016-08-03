@@ -1,0 +1,29 @@
+tmux session notes
+
+1. model = 'zoo', dbtype = 'leveldb', dbno = 1		0.9049		
+2. model = 'zoo', dbtype = 'leveldb', dbno = 3		0.9049		
+3. model = 'zoo', dbtype = 'leveldb', dbno = 2		0.0531		---> makes sense (it's the padded one)
+4. model = 'zoo', dbtype = 'lmdb', dbno = 		0.1084		---> makes sense (lmdb has different preprocessing)
+5. model = 'nn', dbtype = 'lmdb', dbno = 		0.1354		---> 
+6. model = 'nn' dbtype = 'leveldb', dbno = 1		0.5877		--->
+7. model = 'nn' dbtype = 'leveldb', dbno = 3		0.5877		--->
+
+
+
+Source1:	level-db	https://drive.google.com/file/d/0B3j4tSL88j-eU0c4NGd4NC0tUVU/view  (the unpadded one)
+Source2:	level-db	https://gist.github.com/mavenlin/e56253735ef32c3c296d
+Source3:	lmdb		http://caffe.berkeleyvision.org/gathered/examples/cifar10.html (./examples/cifar10/create_cifar10.sh)
+
+Model		Dataset		test-set accuracy
+
+NiN		Source1		0.9049
+NiN		Source2		0.9049
+
+allDropout	Source1		0.5877
+allDropout	Source2		0.5877
+allDropout	Source3		0.1354
+
+Stochastic (100 samples)
+
+allDropout	Source1		0.8403
+NiN		Source1		
