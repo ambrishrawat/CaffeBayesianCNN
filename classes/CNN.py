@@ -34,13 +34,11 @@ class CNN:
 		Load a model and it's corresponding bayesian one with a different prototxt file (with sample_weight:true)
 		'''
 		self.net = caffe.Net(proto_path+'.prototxt',caffe_path, caffe.TEST)
-
 		self.net_bcnn = caffe.Net(proto_path+'_bcnn.prototxt',caffe_path, caffe.TEST)
-
 		pass
 
 
-	def load_db(self,dbtype='',dbno=1,path=''):
+	def load_db(self,mode='trial',dbtype='leveldb',dbno=1):
 		'''
 		Load the data base
 		'''
@@ -55,17 +53,27 @@ class CNN:
 			count = 0
 			Xt = []
 			yt = []
-			r_key = 0
 			self.N = 0
-			for key, _ in db:
-				if count==13:
-					r_key = key
-					self.N +=1
-				count+=1
+
+			if mode=='trial':
+				r_key = 0
+				for key, _ in db:
+					if count==13:
+						r_key = key
+						self.N +=1
+						break
+					count+=1
 				
-			x, y = utils.get_cifar_image(db, str(r_key).zfill(5))
-			Xt += [x]
-			yt += [y]			
+				x, y = utils.get_cifar_image(db, str(r_key).zfill(5))
+				Xt += [x]
+				yt += [y]			
+
+			else:
+				for key, _ in db:
+					x, y = utils.get_cifar_image(db, str(key).zfill(5))
+					Xt += [x]
+					yt += [y]
+					self.N += 1
 			db.close()
 			self.Xt = np.array(Xt)
 			self.yt = np.array(yt)
@@ -78,29 +86,42 @@ class CNN:
 			count = 0
 			Xt = []
 			yt = []
-			r_key, r_val = 0,0
+			
 			self.N = 0
-			for key, value in lmdb_cursor:
-				if count==13:
-					r_key = key
-					r_val = value
-					self.N +=1
-				count+=1
+			if mode=='trial':
+				r_val = 0
+				for _, value in lmdb_cursor:
+					if count==13:
+						r_val = value
+						self.N +=1
+						break
+					count+=1
 
-			datum = caffe.proto.caffe_pb2.Datum()
-			datum.ParseFromString(r_val)
-			label = int(datum.label)
-			image = caffe.io.datum_to_array(datum)
-			image = image.astype(np.float32)
-			Xt += [image]
-			yt += [label]
+				datum = caffe.proto.caffe_pb2.Datum()
+				datum.ParseFromString(r_val)
+				label = int(datum.label)
+				image = caffe.io.datum_to_array(datum)
+				image = image.astype(np.float32)
+				Xt += [image]
+				yt += [label]
+			else:
+				for _, value in lmdb_cursor:
+					datum = caffe.proto.caffe_pb2.Datum()
+					datum.ParseFromString(value)
+					label = int(datum.label)
+					image = caffe.io.datum_to_array(datum)
+					image = image.astype(np.float32)
+					Xt += [image]
+					yt += [label]
+					self.N+=1				
 			self.Xt = np.array(Xt)
 			self.yt = np.array(yt)
 
 		else:
 			print 'UNKNOWN TYPE'
 	
-		print self.Xt.shape, self.yt.shape
+		print 'Data loaded successfully'
+		print 'Input(shape): ', self.Xt.shape, ' Labels(shape): ', self.yt.shape
 
 	def get_adv_class(self,model='zoo', num_samples = 100, num_iter = 20):
 
@@ -180,9 +201,13 @@ class CNN:
 		pylab.show()
 
 
-	def get_accuracy(self):
-		'''get test set'''
-		self.load()
+	def get_accuracy(self,dbtype='leveldb',dbno=1):
+
+		'''Load training set'''
+		self.load_db(mode='trial',dbtype='leveldb',dbno=1)
+		pass
+		
+	
 
 
 
