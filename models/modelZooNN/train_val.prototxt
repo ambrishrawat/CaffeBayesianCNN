@@ -133,7 +133,6 @@ layers {
       type: "constant"
     }
   }
-
 }
 layers {
   name: "relu2"
