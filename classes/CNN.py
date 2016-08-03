@@ -33,8 +33,10 @@ class CNN:
 		'''
 		Load a model and it's corresponding bayesian one with a different prototxt file (with sample_weight:true)
 		'''
+
 		self.net = caffe.Net(proto_path+'.prototxt',caffe_path, caffe.TEST)
 		self.net_bcnn = caffe.Net(proto_path+'_bcnn.prototxt',caffe_path, caffe.TEST)
+	
 		pass
 
 
@@ -42,7 +44,9 @@ class CNN:
 		'''
 		Load the data base
 		'''
-			
+		indices = []
+		if mode=='trial':
+			indices = [1,10,100,150,42,21,75,57,37,111]
 		if (dbtype=='leveldb'):
 			if dbno==1:
 				db = plyvel.DB(src_path+'/data/cifar10_gcn-leveldb/cifar-test-leveldb/')
@@ -55,25 +59,14 @@ class CNN:
 			yt = []
 			self.N = 0
 
-			if mode=='trial':
-				r_key = 0
-				for key, _ in db:
-					if count==13:
-						r_key = key
-						self.N +=1
-						break
-					count+=1
-				
-				x, y = utils.get_cifar_image(db, str(r_key).zfill(5))
-				Xt += [x]
-				yt += [y]			
-
-			else:
-				for key, _ in db:
+			
+			for key, _ in db:
+				if count in indices or mode=='full':
 					x, y = utils.get_cifar_image(db, str(key).zfill(5))
 					Xt += [x]
 					yt += [y]
 					self.N += 1
+				count+=1			
 			db.close()
 			self.Xt = np.array(Xt)
 			self.yt = np.array(yt)
@@ -88,24 +81,8 @@ class CNN:
 			yt = []
 			
 			self.N = 0
-			if mode=='trial':
-				r_val = 0
-				for _, value in lmdb_cursor:
-					if count==13:
-						r_val = value
-						self.N +=1
-						break
-					count+=1
-
-				datum = caffe.proto.caffe_pb2.Datum()
-				datum.ParseFromString(r_val)
-				label = int(datum.label)
-				image = caffe.io.datum_to_array(datum)
-				image = image.astype(np.float32)
-				Xt += [image]
-				yt += [label]
-			else:
-				for _, value in lmdb_cursor:
+			for _, value in lmdb_cursor:
+				if count in indices or mode=='full':
 					datum = caffe.proto.caffe_pb2.Datum()
 					datum.ParseFromString(value)
 					label = int(datum.label)
@@ -113,7 +90,8 @@ class CNN:
 					image = image.astype(np.float32)
 					Xt += [image]
 					yt += [label]
-					self.N+=1				
+					self.N +=1
+				count+=1
 			self.Xt = np.array(Xt)
 			self.yt = np.array(yt)
 
@@ -121,19 +99,17 @@ class CNN:
 			print 'UNKNOWN TYPE'
 	
 		print 'Data loaded successfully'
-		print 'Input(shape): ', self.Xt.shape, ' Labels(shape): ', self.yt.shape
+		print 'Input(shape): ', self.Xt.shape, ' Labels(shape): ', self.yt.shape, ' N:', self.N
 
-	def get_adv_class(self,model='zoo', num_samples = 100, num_iter = 20):
+	def get_adv_class(self, num_samples = 100, num_iter = 20):
 
 
 		l_first = 'data'
-		l_pen = ''
-		if model=='zoo':
-			l_pen = 'pool3'
-		else:
-			l_pen = 'ip2'
-		l_last = 'softmax'
+		l_last = list(self.net._layer_names)[-1]
+		l_pen = list(self.net._layer_names)[-2]
+
  
+		print 'First: ', l_first, '\tLast: ', l_last, '\tPenultimate: ', l_pen
 		adv_label = 1
 		num_samples = 100
 		num_iter = 100
@@ -201,10 +177,46 @@ class CNN:
 		pylab.show()
 
 
-	def get_accuracy(self,dbtype='leveldb',dbno=1):
+	def get_accuracy(self,dbtype='leveldb',dbno=1, mode = 'trial'):
 
-		'''Load training set'''
-		self.load_db(mode='trial',dbtype='leveldb',dbno=1)
+		'''
+		Load test-set
+		'''
+		self.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
+		
+		'''
+		Check accuracy (deterministic NN)
+
+			Step1: Reshape the input data blob 
+			Step2: One forward pass
+		'''
+
+		l_first = 'data'
+		l_last = list(self.net._layer_names)[-1]
+		l_pen = list(self.net._layer_names)[-2]
+
+		batch_size = 100
+		num_correct = 0.0
+		for b in xrange(self.N/batch_size):
+		
+			input_batch = self.Xt[b:b+batch_size,:,:,:]
+			print 'Input shape (from file)', self.net.blobs[l_first].data.shape
+			self.net.blobs[l_first].reshape(*input_batch.shape)
+			self.net.blobs[l_first].data[...] = input_batch
+			print 'Input shape (after reshape)', self.net.blobs[l_first].data.shape
+			self.net.forward()
+
+			prob = self.net.blobs[l_last].data.copy()
+			print prob.shape #(batch_size,10,1,1)
+			
+			y_out = [prob[i,:,:,:,].argmax() for i in xrange(batch_size)]
+			y_out = np.array(y_out).reshape(*self.yt[b:b+batch_size].shape)
+	
+			num_correct += np.count_nonzero(y_out==self.yt[b:b+batch_size])
+			
+		acc = float(num_correct)/float(self.N)
+		print acc
+	
 		pass
 		
 	
