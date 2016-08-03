@@ -26,4 +26,4 @@ allDropout	Source3		0.1354
 Stochastic (100 samples)
 
 allDropout	Source1		0.8403
-NiN		Source1		
+NiN		Source1		0.8963

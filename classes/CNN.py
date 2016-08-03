@@ -46,7 +46,8 @@ class CNN:
 		'''
 		indices = []
 		if mode=='trial':
-			indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
+			#indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
+			indices = [1,10,100,150,42]
 		if (dbtype=='leveldb'):
 			if dbno==1:
 				db = plyvel.DB(src_path+'/data/cifar10_gcn-leveldb/cifar-test-leveldb/')
@@ -101,81 +102,115 @@ class CNN:
 		print 'Data loaded successfully'
 		print 'Input(shape): ', self.Xt.shape, ' Labels(shape): ', self.yt.shape, ' N:', self.N
 
-	def get_adv_class(self, num_samples = 100, num_iter = 20):
 
+	def get_adv_plot(self, stoch_bsize = 100, grad_steps = 20, mode = 'trial'):
 
 		l_first = 'data'
 		l_last = list(self.net._layer_names)[-1]
 		l_pen = list(self.net._layer_names)[-2]
-
  
 		print 'First: ', l_first, '\tLast: ', l_last, '\tPenultimate: ', l_pen
-		adv_label = 1
-		num_samples = 100
-		num_iter = 100
+		
+		'''
+		get adversarial label array correspondint to yt
+		'''
+		yt_adv = utils.get_adv_label(self.yt)
 
+		'''
+		arrays for scatter plot
 
-		x = []
-		c_prob = []
+		c_prob : self.N x grad_step x stoch_bsize x probs_10
 
+		also save images
 
-		caffe_input = self.Xt.reshape(self.N,3,32,32)
-		target_probs = [0.6] #[0.1,0.2,0.3,0.4,0.5,0.6]
-		caffe_input_fooled_probs = [caffe_input.copy() for _ in xrange(len(target_probs))]
+		img_adv : self.N x grad_steps x 3 x 32 x 32
 
-		for target_prob, caffe_input_fooled in zip(target_probs, caffe_input_fooled_probs):
+		'''
+		
+		c_prob = np.zeros((self.N,grad_steps, stoch_bsize,10))
+		img_adv = np.zeros((self.N, grad_steps, 3, 32, 32))
 
-			for c_iter in xrange(num_iter):
+		batch_size = 100
+		if mode=='trial':
+			batch_size = 5 
+
+		for b in xrange(self.N/batch_size):
+		
+			input_fool = self.Xt[b:b+batch_size,:,:,:].copy()
+			
+			for gstep in xrange(grad_steps):
 
 				'''
 				Step 1: Set the data for the network for which you want the adversarial image
-				'''			
-				self.net.blobs[l_first].data[...] = caffe_input_fooled
+				'''
+				self.net.blobs[l_first].reshape(*input_fool.shape)
+				self.net.blobs[l_first].data[...] = input_fool
 				self.net.forward()
 				prob = self.net.blobs[l_last].data.squeeze().copy()
 				if len(prob.shape) == 1:
 					prob = prob[None]
+				#print prob.shape #(batch_size,10)
+
 
 				'''
 				Step 2: Copy the data to the stochastic-network to get uncertainity estimates 
 				'''
-				caffe_input_fooled_bcnn = np.array([caffe_input_fooled.copy() for _ in xrange(num_samples)]).reshape(self.N*num_samples,3,32,32)
-				self.net_bcnn.blobs[l_first].data[...] = caffe_input_fooled_bcnn
-				self.net_bcnn.forward()
-				prob_bcnn = self.net_bcnn.blobs[l_last].data.squeeze().copy()
-				print prob_bcnn.shape
-			
+				for idx in xrange(batch_size):
+					c_prob[b+idx,gstep,:,:] = self.get_stoch_probs(img=input_fool[idx,:,:,:],stoch_bsize=stoch_bsize)
 
+		
 				'''
-				Step 3: Copy the predicted probs in appropirate arrays for plotting
-				'''
-				adv_prob = prob_bcnn[:,adv_label]
-				c_prob = np.append(c_prob,adv_prob)
-				x = np.append(x,c_iter*np.ones((num_samples,)))
-
-
-
-				'''
-				Step 4: Backprop the error
+				Step 3: Backprop the error
 					Update the loss/the derivative for the penultimate layer
 					Take care of the tensor shapes for the layers (depends on the architecture)
 				'''
-				prob[:,adv_label] -= 1.
+				prob[:,yt_adv[b:b+batch_size]] -= 1.
 				#print prob.shape
 				#print 'YODA', self.net.blobs[l_pen].diff.shape
 				self.net.blobs[l_pen].diff[...] = prob[:,None,None,:]
 				self.net._backward(list(self.net._layer_names).index(l_pen), 0)
 				caffe_input_fooled -= self.net.blobs[l_first].diff * 4.e1
 
-		'''
-		Plot the obtained probabilities for classification 
-		'''
-		c_prob = np.array(c_prob)
-		x = np.array(x)
-		print 'YODA', c_prob.shape ,x.shape
-		pylab.scatter(x,c_prob)
-		pylab.show()
+		pass
 
+
+	def get_stoch_probs(self,img_set, stoch_bsize=100):
+		'''
+		get stochastic update for one imput image
+		'''
+		l_first = 'data'
+		l_last = list(self.net._layer_names)[-1]
+		prob_bcnn = np.zeros((img_set.shape[0],stoch_bsize,10))
+		for idx in xrange(img_set.shape[0]):
+			input_bcnn = np.array([img_set[idx,:,:,:].copy() for _ in xrange(stoch_bsize)])
+			self.net_bcnn.blobs[l_first].reshape(*input_bcnn.shape)
+			self.net_bcnn.blobs[l_first].data[...] = input_bcnn
+			self.net_bcnn.forward()
+			prob_bcnn[idx,:,:] = self.net_bcnn.blobs[l_last].data.squeeze().copy()
+		'''
+		prob_bcnn.shape = (img_set.shape[0],stoch_bsize,10)
+		'''
+		return prob_bcnn
+		
+	def get_det_probs(self,img_set, batch_size=100):
+		'''
+		get stochastic update for one imput image
+		'''
+		l_first = 'data'
+		l_last = list(self.net._layer_names)[-1]
+		prob_cnn = np.zeros((img_set.shape[0],10))
+		for b in xrange(img_set.shape[0]/batch_size):
+			partition = [b*batch_size:(b+1)*batch_size]
+			input_batch = img_set[partition,:,:,:]
+			self.net.blobs[l_first].reshape(*input_batch.shape)
+			self.net.blobs[l_first].data[...] = input_batch
+			self.net.forward()
+			prob_cnn[partition,:] = self.net.blobs[l_last].data.squeeze().copy()
+
+		'''
+		prob_cnn.shape = img_set.shape[0],10)
+		'''
+		return prob_bcnn
 
 	def get_accuracy(self,dbtype='leveldb',dbno=1, mode = 'trial'):
 
@@ -190,43 +225,22 @@ class CNN:
 			Step1: Reshape the input data blob 
 			Step2: One forward pass
 		'''
-
-		l_first = 'data'
-		l_last = list(self.net._layer_names)[-1]
-		l_pen = list(self.net._layer_names)[-2]
-
 		batch_size = 100
 		if mode=='trial':
 			batch_size = 5
 
-		num_correct = 0.0
-		for b in xrange(self.N/batch_size):
+		prob = self.get_det_probs(self.Xt, batch_size=batch_size)
+		y_out = [prob[i,:].argmax() for i in xrange(self.N)]
+		y_out = np.array(y_out).reshape(*self.yt[partition].shape)
 		
-			input_batch = self.Xt[b:b+batch_size,:,:,:]
-			print 'Input shape (from file)', self.net.blobs[l_first].data.shape
-			self.net.blobs[l_first].reshape(*input_batch.shape)
-			self.net.blobs[l_first].data[...] = input_batch
-			print 'Input shape (after reshape)', self.net.blobs[l_first].data.shape
-			self.net.forward()
-
-			prob = self.net.blobs[l_last].data.copy()
-			prob = prob.reshape((batch_size,10))
-			print prob.shape #(batch_size,10,1,1)
 			
-			#y_out = [prob[i,:,:,:].argmax() for i in xrange(batch_size)]
-			
-			y_out = [prob[i,:].argmax() for i in xrange(batch_size)]
-			y_out = np.array(y_out).reshape(*self.yt[b:b+batch_size].shape)
-	
-			num_correct += np.count_nonzero(y_out==self.yt[b:b+batch_size])
-			
-		acc = float(num_correct)/float(self.N)
+		acc = float(np.count_nonzero(y_out==self.yt))/float(self.N)
 		print acc
 	
 		pass
 		
 
-	def get_accuracy_bcnn(self,dbtype='leveldb',dbno=1, mode = 'trial'):
+	def get_accuracy_bcnn(self,dbtype='leveldb',dbno=1, mode = 'trial', stoch_bsize = 100):
 
 		'''
 		Load test-set
@@ -239,14 +253,10 @@ class CNN:
 			Step1: Reshape the input data blob 
 			Step2: One forward pass
 		'''
-
-		l_first = 'data'
-		l_last = list(self.net_bcnn._layer_names)[-1]
-		l_pen = list(self.net_bcnn._layer_names)[-2]
-
-		batch_size = 100
 		
-
+		probs = self.get_stoch_probs(self.Xt, stoch_bsize=stoch_bsize)
+		#prob_mean = [probs f]
+		#Take appropriate axis mean and then argmax
 		num_correct = 0.0
 		for b in xrange(self.N):
 			print b
