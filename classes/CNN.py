@@ -46,7 +46,7 @@ class CNN:
 		'''
 		indices = []
 		if mode=='trial':
-			indices = [1,10,100,150,42,21,75,57,37,111]
+			indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
 		if (dbtype=='leveldb'):
 			if dbno==1:
 				db = plyvel.DB(src_path+'/data/cifar10_gcn-leveldb/cifar-test-leveldb/')
@@ -196,6 +196,9 @@ class CNN:
 		l_pen = list(self.net._layer_names)[-2]
 
 		batch_size = 100
+		if mode=='trial':
+			batch_size = 5
+
 		num_correct = 0.0
 		for b in xrange(self.N/batch_size):
 		
@@ -207,9 +210,12 @@ class CNN:
 			self.net.forward()
 
 			prob = self.net.blobs[l_last].data.copy()
+			prob = prob.reshape((batch_size,10))
 			print prob.shape #(batch_size,10,1,1)
 			
-			y_out = [prob[i,:,:,:,].argmax() for i in xrange(batch_size)]
+			#y_out = [prob[i,:,:,:].argmax() for i in xrange(batch_size)]
+			
+			y_out = [prob[i,:].argmax() for i in xrange(batch_size)]
 			y_out = np.array(y_out).reshape(*self.yt[b:b+batch_size].shape)
 	
 			num_correct += np.count_nonzero(y_out==self.yt[b:b+batch_size])
@@ -219,6 +225,49 @@ class CNN:
 	
 		pass
 		
+
+	def get_accuracy_bcnn(self,dbtype='leveldb',dbno=1, mode = 'trial'):
+
+		'''
+		Load test-set
+		'''
+		self.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
+		
+		'''
+		Check accuracy (deterministic NN)
+
+			Step1: Reshape the input data blob 
+			Step2: One forward pass
+		'''
+
+		l_first = 'data'
+		l_last = list(self.net_bcnn._layer_names)[-1]
+		l_pen = list(self.net_bcnn._layer_names)[-2]
+
+		batch_size = 100
+		
+
+		num_correct = 0.0
+		for b in xrange(self.N):
+			print b
+			input_batch = np.array([self.Xt[b,:,:,:].copy() for _ in xrange(batch_size)])
+			print 'Input shape (from file)', self.net_bcnn.blobs[l_first].data.shape
+			self.net_bcnn.blobs[l_first].reshape(*input_batch.shape)
+			self.net_bcnn.blobs[l_first].data[...] = input_batch
+			print 'Input shape (after reshape)', self.net_bcnn.blobs[l_first].data.shape
+			self.net_bcnn.forward()
+
+			prob = self.net_bcnn.blobs[l_last].data.copy()
+			prob = prob.reshape((batch_size,10))
+			print prob.shape #(batch_size,10,1,1)
+			
+			y_out = np.array([np.mean(prob[:,i]) for i in xrange(10)]).argmax()
+			num_correct += np.count_nonzero(y_out==self.yt[b])
+			
+		acc = float(num_correct)/float(self.N)
+		print acc
+	
+		pass
 	
 
 
