@@ -154,10 +154,10 @@ class CNN:
 		'''
 		save the images 
 		'''
-		np.save('cprob',c_prob)
-		np.save('imgadv',img_adv)
-		np.save('ytadv',yt_adv)
-		np.save('yt',self.yt)
+		np.save(src_path+'/results/cprob',c_prob)
+		np.savesrc_path+'/results/imgadv',img_adv)
+		np.save(src_path+'/results/ytadv',yt_adv)
+		np.save(src_path+'/results/yt',self.yt)
 		pass
 
 
