@@ -16,10 +16,10 @@ Source3:	lmdb		http://caffe.berkeleyvision.org/gathered/examples/cifar10.html (.
 
 Model		Dataset		test-set accuracy
 
-NiN		Source1		0.9049
+NiN		Source1		0.9049		0.8957
 NiN		Source2		0.9049
 
-allDropout	Source1		0.5877
+allDropout	Source1		0.5877		0.5818
 allDropout	Source2		0.5877
 allDropout	Source3		0.1354
 

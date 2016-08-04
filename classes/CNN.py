@@ -45,10 +45,14 @@ class CNN:
 		Load the data base
 		'''
 		indices = []
+		self.batch_size = 100
 		if mode=='trial':
 			indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
 			#indices = [1,10,100,150,42]
+			#indices = [13,42]
+			self.batch_size = 5
 		if (dbtype=='leveldb'):
+
 			if dbno==1:
 				db = plyvel.DB(src_path+'/data/cifar10_gcn-leveldb/cifar-test-leveldb/')
 			elif dbno==2:
@@ -118,9 +122,6 @@ class CNN:
 		c_prob = np.zeros((self.N,grad_steps, stoch_bsize,10))
 		img_adv = np.zeros((self.N, grad_steps, 3, 32, 32))
 
-		batch_size = 100
-		if mode=='trial':
-			batch_size = 5 
 
 		input_fool = self.Xt.copy()
 			
@@ -129,49 +130,50 @@ class CNN:
 			'''
 			Step 1: Set the data for the network for which you want the adversarial image
 			'''
-			prob = get_det_probs(input_fool, batch_size=batch_size)
-			if len(prob.shape) == 1:
-				prob = prob[None]
-			#print prob.shape #(batch_size,10)
-
+			prob = self.get_det_probs(img_set=input_fool)
 
 			'''
 			Step 2: Copy the data to the stochastic-network to get uncertainity estimates 
 			'''
-			for idx in xrange(self.N):
-				c_prob[idx,gstep,:,:] = self.get_stoch_probs(img=input_fool[idx,:,:,:],stoch_bsize=stoch_bsize)
-
+			prob_stoch = self.get_stoch_probs(img_set=input_fool,stoch_bsize=stoch_bsize)
+			c_prob[:,gstep,:,:] = prob_stoch.copy()
+			
 			'''
 			Step 3: Set the probablisties for adversarial label
 			'''
 			for idx in xrange(self.N):
 				prob[:,yt_adv[idx]] -= 1.
-			
-
+					
 			'''
 			Step 4: Backprop and add gradients
 			'''
-			input_grads = self.get_data_grads(input_fool,prob,batch_size = batch_size)
+			input_grads = self.get_data_grads(input_fool,prob)
 			input_fool -= input_grads* 4.e1
 		pass
 
 
-	def get_data_grads(self,img_set,probs,batch_size=100):
+	def get_data_grads(self,img_set,prob):
 		'''
 		get backpropagated gradients 
 		'''
 		l_first = 'data'
 		l_last = list(self.net._layer_names)[-1]
 		l_pen = list(self.net._layer_names)[-2]
-		img_grads = np.zeros(*img_set.shape)
-		partition = np.arange(batch_size)
-		for b in xrange(img_set.shape[0]/batch_size):
+		img_grads = img_set.copy()
+		partition = np.arange(self.batch_size)
+
+		if l_pen == 'ip2':
+			pass
+		else:
+			prob = prob[:,:,None,None]
+
+		for b in xrange(img_set.shape[0]/self.batch_size):
 			print 'Backprop Batch: ',b
 			input_batch = img_set[partition,:,:,:]
-			self.net.blobs[l_pen].diff[...] = prob[partition,None,None,:]
+			self.net.blobs[l_pen].diff[...] = prob[partition]
 			self.net._backward(list(self.net._layer_names).index(l_pen), 0)
 			img_grads[partition,:,:,:] = self.net.blobs[l_first].diff
-			partition += batch_size*np.ones(batch_size,dtype='int64')
+			partition += self.batch_size*np.ones(self.batch_size,dtype='int64')
 		return img_grads
 
 	def get_stoch_probs(self,img_set, stoch_bsize=100):
@@ -192,54 +194,47 @@ class CNN:
 		'''
 		return prob_bcnn
 		
-	def get_det_probs(self,img_set, batch_size=100):
+	def get_det_probs(self,img_set):
 		'''
 		get stochastic update for one imput image
 		'''
 		l_first = 'data'
 		l_last = list(self.net._layer_names)[-1]
 		prob_cnn = np.zeros((img_set.shape[0],10))
-		partition = np.arange(batch_size)
-		for b in xrange(img_set.shape[0]/batch_size):
+		partition = np.arange(self.batch_size)
+		for b in xrange(img_set.shape[0]/self.batch_size):
 			print 'Batch: ', b, '\t', partition[0]
 			input_batch = img_set[partition,:,:,:]
 			self.net.blobs[l_first].reshape(*input_batch.shape)
 			self.net.blobs[l_first].data[...] = input_batch
 			self.net.forward()
 			prob_cnn[partition,:] = self.net.blobs[l_last].data.squeeze().copy()
-			partition += batch_size*np.ones(batch_size,dtype='int64')
+			partition += self.batch_size*np.ones(self.batch_size,dtype='int64')
 
 		'''
 		prob_cnn.shape = img_set.shape[0],10)
 		'''
 		return prob_cnn
 
-	def get_accuracy(self,dbtype='leveldb',dbno=1, mode = 'trial'):
+	def get_accuracy(self):
 		'''
 		Accuracy (argmax)
 		'''
-		self.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
 		
-		batch_size = 100
-		if mode=='trial':
-			batch_size = 5
-
-		prob = self.get_det_probs(self.Xt, batch_size=batch_size)
+		prob = self.get_det_probs(self.Xt)
 		y_out = [prob[i,:].argmax() for i in xrange(self.N)]
 		y_out = np.array(y_out).reshape(*self.yt.shape)
 		
-			
 		acc = float(np.count_nonzero(y_out==self.yt))/float(self.N)
 		print acc
 	
 		pass
 		
 
-	def get_accuracy_bcnn(self,dbtype='leveldb',dbno=1, mode = 'trial', stoch_bsize = 100):
+	def get_accuracy_bcnn(self,stoch_bsize = 100):
 		'''
 		Accuracy (argmax)
 		'''
-		self.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
 		
 		probs = self.get_stoch_probs(self.Xt, stoch_bsize=stoch_bsize)
 		prob_mean = np.mean(probs,axis=1)
@@ -247,7 +242,6 @@ class CNN:
 		y_out = [prob_mean[i,:].argmax() for i in xrange(self.N)]
 		y_out = np.array(y_out).reshape(*self.yt.shape)
 		
-			
 		acc = float(np.count_nonzero(y_out==self.yt))/float(self.N)
 		print acc
 	
