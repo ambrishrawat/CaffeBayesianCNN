@@ -156,6 +156,8 @@ class CNN:
 		'''
 		np.save('cprob',c_prob)
 		np.save('imgadv',img_adv)
+		np.save('ytadv',yt_adv)
+		np.save('yt',self.yt)
 		pass
 
 
