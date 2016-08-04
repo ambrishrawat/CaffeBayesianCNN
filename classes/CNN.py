@@ -149,13 +149,13 @@ class CNN:
 			'''
 			input_grads = self.get_data_grads(input_fool,prob)
 			img_adv[:,gstep,:,:,:] = input_fool.copy()
-			input_fool -= input_grads* 4.e1
+			input_fool -= input_grads* 4.e-1
 		
 		'''
 		save the images 
 		'''
 		np.save(src_path+'/results/cprob',c_prob)
-		np.savesrc_path+'/results/imgadv',img_adv)
+		np.save(src_path+'/results/imgadv',img_adv)
 		np.save(src_path+'/results/ytadv',yt_adv)
 		np.save(src_path+'/results/yt',self.yt)
 		pass
