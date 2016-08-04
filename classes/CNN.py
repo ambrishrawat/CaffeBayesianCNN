@@ -150,15 +150,15 @@ class CNN:
 			input_grads = self.get_data_grads(input_fool,prob)
 			img_adv[:,gstep,:,:,:] = input_fool.copy()
 			print 'NONZERO GRADS: ', np.count_nonzero(input_grads), '\t GSTEPS ',gstep
-			input_fool -= input_grads* 4.e-2 
+			input_fool -= input_grads* 1.e-2 
 		
 		'''
 		save the images 
 		'''
-		np.save(src_path+'/results/nncprob',c_prob)
-		np.save(src_path+'/results/nnimgadv',img_adv)
-		np.save(src_path+'/results/nnytadv',yt_adv)
-		np.save(src_path+'/results/nnyt',self.yt)
+		np.save(src_path+'/results/nn_100cprob',c_prob)
+		np.save(src_path+'/results/nn_100imgadv',img_adv)
+		np.save(src_path+'/results/nn_100ytadv',yt_adv)
+		np.save(src_path+'/results/nn_100yt',self.yt)
 		pass
 
 
@@ -186,12 +186,36 @@ class CNN:
 			partition += self.batch_size*np.ones(self.batch_size,dtype='int64')
 		return img_grads
 
+	def get_data_grads_stoch(self,img_set,prob):
+		'''
+		get backpropagated gradients 
+		'''
+		l_first = 'data'
+		l_last = list(self.net_bcnn._layer_names)[-1]
+		l_pen = list(self.net_bcnn._layer_names)[-2]
+		img_grads = img_set.copy()
+		partition = np.arange(self.batch_size)
+
+		if l_pen == 'ip2':
+			pass
+		else:
+			prob = prob[:,:,None,None]
+
+		for b in xrange(img_set.shape[0]/self.batch_size):
+			print 'Backprop Batch: ',b
+			input_batch = img_set[partition,:,:,:]
+			self.net_bcnn.blobs[l_pen].diff[...] = prob[partition]
+			self.net_bcnn._backward(list(self.net_bcnn._layer_names).index(l_pen), 0)
+			img_grads[partition,:,:,:] = self.net_bcnn.blobs[l_first].diff
+			partition += self.batch_size*np.ones(self.batch_size,dtype='int64')
+		return img_grads
+
 	def get_stoch_probs(self,img_set, stoch_bsize=100):
 		'''
 		get stochastic update for one imput image
 		'''
 		l_first = 'data'
-		l_last = list(self.net._layer_names)[-1]
+		l_last = list(self.net_bcnn._layer_names)[-1]
 		prob_bcnn = np.zeros((img_set.shape[0],stoch_bsize,10))
 		for idx in xrange(img_set.shape[0]):
 			input_bcnn = np.array([img_set[idx,:,:,:].copy() for _ in xrange(stoch_bsize)])
@@ -206,21 +230,25 @@ class CNN:
 
 	def get_stoch_probs2(self,img_set):
 		'''
-		get stochastic update for one imput image
+		get stochastic probs
 		'''
 		l_first = 'data'
-		l_last = list(self.net._layer_names)[-1]
-		prob_bcnn = np.zeros((img_set.shape[0],stoch_bsize,10))
-		for idx in xrange(img_set.shape[0]):
-			input_bcnn = np.array([img_set[idx,:,:,:].copy() for _ in xrange(stoch_bsize)])
-			self.net_bcnn.blobs[l_first].reshape(*input_bcnn.shape)
-			self.net_bcnn.blobs[l_first].data[...] = input_bcnn
+		l_last = list(self.net_bcnn._layer_names)[-1]
+		prob_cnn = np.zeros((img_set.shape[0],10))
+		partition = np.arange(self.batch_size)
+		for b in xrange(img_set.shape[0]/self.batch_size):
+			print 'Batch: ', b, '\t', partition[0]
+			input_batch = img_set[partition,:,:,:]
+			self.net_bcnn.blobs[l_first].reshape(*input_batch.shape)
+			self.net_bcnn.blobs[l_first].data[...] = input_batch
 			self.net_bcnn.forward()
-			prob_bcnn[idx,:,:] = self.net_bcnn.blobs[l_last].data.squeeze().copy()
+			prob_cnn[partition,:] = self.net_bcnn.blobs[l_last].data.squeeze().copy()
+			partition += self.batch_size*np.ones(self.batch_size,dtype='int64')
+
 		'''
-		prob_bcnn.shape = (img_set.shape[0],stoch_bsize,10)
+		prob_cnn.shape = img_set.shape[0],10)
 		'''
-		return prob_bcnn
+		return prob_cnn
 
 		
 	def get_det_probs(self,img_set):
@@ -299,7 +327,7 @@ class CNN:
 			'''
 			Step 1: Set the data for the network for which you want the adversarial image
 			'''
-			prob = self.get_stoch_probs(img_set=input_fool,stoch_bsize=1)
+			prob = self.get_stoch_probs2(img_set=input_fool,stoch_bsize=1)
 
 			'''
 			Step 2: Copy the data to the stochastic-network to get uncertainity estimates 

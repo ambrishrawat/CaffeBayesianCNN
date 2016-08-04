@@ -41,7 +41,7 @@ def exp2(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 	cnn = CNN()
 	cnn.load(proto_path=proto_path, caffe_path=caffe_path)
 	cnn.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
-	cnn.get_adv_probs(stoch_bsize = 100, grad_steps = 50)
+	cnn.get_adv_probs(stoch_bsize = 100, grad_steps = 100)
 
 
 
