@@ -52,4 +52,4 @@ if __name__ == "__main__":
 	#exp1(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode ='trial')
 	#exp1(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode ='trial')
 	
-	exp2(model = 'zoo', dbtype = 'leveldb', dbno = 3, mode ='trial')
+	exp2(model = 'nn', dbtype = 'leveldb', dbno = 1, mode ='trial')

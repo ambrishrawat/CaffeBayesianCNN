@@ -155,10 +155,10 @@ class CNN:
 		'''
 		save the images 
 		'''
-		np.save(src_path+'/results/cprob',c_prob)
-		np.save(src_path+'/results/imgadv',img_adv)
-		np.save(src_path+'/results/ytadv',yt_adv)
-		np.save(src_path+'/results/yt',self.yt)
+		np.save(src_path+'/results/nncprob',c_prob)
+		np.save(src_path+'/results/nnimgadv',img_adv)
+		np.save(src_path+'/results/nnytadv',yt_adv)
+		np.save(src_path+'/results/nnyt',self.yt)
 		pass
 
 
@@ -203,6 +203,25 @@ class CNN:
 		prob_bcnn.shape = (img_set.shape[0],stoch_bsize,10)
 		'''
 		return prob_bcnn
+
+	def get_stoch_probs2(self,img_set):
+		'''
+		get stochastic update for one imput image
+		'''
+		l_first = 'data'
+		l_last = list(self.net._layer_names)[-1]
+		prob_bcnn = np.zeros((img_set.shape[0],stoch_bsize,10))
+		for idx in xrange(img_set.shape[0]):
+			input_bcnn = np.array([img_set[idx,:,:,:].copy() for _ in xrange(stoch_bsize)])
+			self.net_bcnn.blobs[l_first].reshape(*input_bcnn.shape)
+			self.net_bcnn.blobs[l_first].data[...] = input_bcnn
+			self.net_bcnn.forward()
+			prob_bcnn[idx,:,:] = self.net_bcnn.blobs[l_last].data.squeeze().copy()
+		'''
+		prob_bcnn.shape = (img_set.shape[0],stoch_bsize,10)
+		'''
+		return prob_bcnn
+
 		
 	def get_det_probs(self,img_set):
 		'''
@@ -257,6 +276,59 @@ class CNN:
 	
 		pass
 	
+	def get_adv_stoch_probs(self, stoch_bsize = 100, grad_steps = 20, mode = 'trial'):
+
+		'''
+		get adversarial label array correspondint to yt
+		'''
+		yt_adv = utils.get_adv_label(self.yt)
+
+		'''
+		c_prob : self.N x grad_step x stoch_bsize x probs_10
+		img_adv : self.N x grad_steps x 3 x 32 x 32
+		'''
+		
+		c_prob = np.zeros((self.N,grad_steps, stoch_bsize,10))
+		img_adv = np.zeros((self.N, grad_steps, 3, 32, 32))
+
+
+		input_fool = self.Xt.copy()
+			
+		for gstep in xrange(grad_steps):
+
+			'''
+			Step 1: Set the data for the network for which you want the adversarial image
+			'''
+			prob = self.get_stoch_probs(img_set=input_fool,stoch_bsize=1)
+
+			'''
+			Step 2: Copy the data to the stochastic-network to get uncertainity estimates 
+			'''
+			prob_stoch = self.get_stoch_probs(img_set=input_fool,stoch_bsize=stoch_bsize)
+			c_prob[:,gstep,:,:] = prob_stoch.copy()
+			
+			'''
+			Step 3: Set the probablisties for adversarial label
+			'''
+			for idx in xrange(self.N):
+				prob[:,yt_adv[idx]] -= 1.
+					
+			'''
+			Step 4: Backprop and add gradients
+			'''
+			input_grads = self.get_data_grads(input_fool,prob)
+			img_adv[:,gstep,:,:,:] = input_fool.copy()
+			print 'NONZERO GRADS: ', np.count_nonzero(input_grads), '\t GSTEPS ',gstep
+			input_fool -= input_grads* 4.e-2 
+		
+		'''
+		save the images 
+		'''
+		np.save(src_path+'/results/nncprob',c_prob)
+		np.save(src_path+'/results/nnimgadv',img_adv)
+		np.save(src_path+'/results/nnytadv',yt_adv)
+		np.save(src_path+'/results/nnyt',self.yt)
+		pass
 
 
 
