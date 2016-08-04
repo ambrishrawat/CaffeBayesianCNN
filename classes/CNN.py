@@ -149,8 +149,8 @@ class CNN:
 			'''
 			input_grads = self.get_data_grads(input_fool,prob)
 			img_adv[:,gstep,:,:,:] = input_fool.copy()
-			print 'NONZERO GRADS: ', np.count_nonzero(input_grads)
-			input_fool -= input_grads* 4.e-2
+			print 'NONZERO GRADS: ', np.count_nonzero(input_grads), '\t GSTEPS ',gstep
+			input_fool -= input_grads* 4.e-2 
 		
 		'''
 		save the images 
