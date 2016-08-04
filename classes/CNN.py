@@ -107,7 +107,7 @@ class CNN:
 		print 'Input(shape): ', self.Xt.shape, ' Labels(shape): ', self.yt.shape, ' N:', self.N
 
 
-	def get_adv_plot(self, stoch_bsize = 100, grad_steps = 20, mode = 'trial'):
+	def get_adv_probs(self, stoch_bsize = 100, grad_steps = 20, mode = 'trial'):
 
 		'''
 		get adversarial label array correspondint to yt
@@ -148,7 +148,14 @@ class CNN:
 			Step 4: Backprop and add gradients
 			'''
 			input_grads = self.get_data_grads(input_fool,prob)
+			img_adv[:,gstep,:,:,:] = input_fool.copy()
 			input_fool -= input_grads* 4.e1
+		
+		'''
+		save the images 
+		'''
+		np.save('cprob',c_prob)
+		np.save('imgadv',img_adv)
 		pass
 
 

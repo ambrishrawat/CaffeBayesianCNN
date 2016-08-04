@@ -41,7 +41,7 @@ def exp2(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 	cnn = CNN()
 	cnn.load(proto_path=proto_path, caffe_path=caffe_path)
 	cnn.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
-	cnn.get_adv_plot(stoch_bsize = 100, grad_steps = 1)
+	cnn.get_adv_probs(stoch_bsize = 100, grad_steps = 5)
 
 
 
@@ -52,4 +52,4 @@ if __name__ == "__main__":
 	#exp1(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode ='trial')
 	#exp1(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode ='trial')
 	
-	exp2(model = 'nn', dbtype = 'leveldb', dbno = 3, mode ='trial')
+	exp2(model = 'zoo', dbtype = 'leveldb', dbno = 3, mode ='trial')
