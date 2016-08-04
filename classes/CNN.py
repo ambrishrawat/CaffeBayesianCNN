@@ -46,8 +46,8 @@ class CNN:
 		'''
 		indices = []
 		if mode=='trial':
-			#indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
-			indices = [1,10,100,150,42]
+			indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
+			#indices = [1,10,100,150,42]
 		if (dbtype=='leveldb'):
 			if dbno==1:
 				db = plyvel.DB(src_path+'/data/cifar10_gcn-leveldb/cifar-test-leveldb/')
@@ -164,12 +164,14 @@ class CNN:
 		l_last = list(self.net._layer_names)[-1]
 		l_pen = list(self.net._layer_names)[-2]
 		img_grads = np.zeros(*img_set.shape)
+		partition = np.arange(batch_size)
 		for b in xrange(img_set.shape[0]/batch_size):
-			partition = [b*batch_size:(b+1)*batch_size]
+			print 'Backprop Batch: ',b
 			input_batch = img_set[partition,:,:,:]
 			self.net.blobs[l_pen].diff[...] = prob[partition,None,None,:]
 			self.net._backward(list(self.net._layer_names).index(l_pen), 0)
 			img_grads[partition,:,:,:] = self.net.blobs[l_first].diff
+			partition += batch_size*np.ones(batch_size,dtype='int64')
 		return img_grads
 
 	def get_stoch_probs(self,img_set, stoch_bsize=100):
@@ -197,32 +199,27 @@ class CNN:
 		l_first = 'data'
 		l_last = list(self.net._layer_names)[-1]
 		prob_cnn = np.zeros((img_set.shape[0],10))
+		partition = np.arange(batch_size)
 		for b in xrange(img_set.shape[0]/batch_size):
-			partition = [b*batch_size:(b+1)*batch_size]
+			print 'Batch: ', b, '\t', partition[0]
 			input_batch = img_set[partition,:,:,:]
 			self.net.blobs[l_first].reshape(*input_batch.shape)
 			self.net.blobs[l_first].data[...] = input_batch
 			self.net.forward()
 			prob_cnn[partition,:] = self.net.blobs[l_last].data.squeeze().copy()
+			partition += batch_size*np.ones(batch_size,dtype='int64')
 
 		'''
 		prob_cnn.shape = img_set.shape[0],10)
 		'''
-		return prob_bcnn
+		return prob_cnn
 
 	def get_accuracy(self,dbtype='leveldb',dbno=1, mode = 'trial'):
-
 		'''
-		Load test-set
+		Accuracy (argmax)
 		'''
 		self.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
 		
-		'''
-		Check accuracy (deterministic NN)
-
-			Step1: Reshape the input data blob 
-			Step2: One forward pass
-		'''
 		batch_size = 100
 		if mode=='trial':
 			batch_size = 5
@@ -239,18 +236,10 @@ class CNN:
 		
 
 	def get_accuracy_bcnn(self,dbtype='leveldb',dbno=1, mode = 'trial', stoch_bsize = 100):
-
 		'''
-		Load test-set
+		Accuracy (argmax)
 		'''
 		self.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
-		
-		'''
-		Check accuracy (deterministic NN)
-
-			Step1: Reshape the input data blob 
-			Step2: One forward pass
-		'''
 		
 		probs = self.get_stoch_probs(self.Xt, stoch_bsize=stoch_bsize)
 		prob_mean = np.mean(probs,axis=1)
