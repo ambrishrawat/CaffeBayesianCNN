@@ -13,6 +13,7 @@ import pickle
 import pylab
 import utils
 import random
+import scipy as sp
 
 src_path = '/home/ar773/CaffeBayesianCNN'
 
@@ -25,7 +26,7 @@ class CNN:
 		#self.net_bcnn
 		#self.Xt
 		#self.yt
-		#self.N		
+		#self.N	
 		pass
 
 
@@ -35,22 +36,25 @@ class CNN:
 		'''
 
 		self.net = caffe.Net(proto_path+'.prototxt',caffe_path, caffe.TEST)
-		self.net_bcnn = caffe.Net(proto_path+'_bcnn.prototxt',caffe_path, caffe.TEST)
+		#self.net_bcnn = caffe.Net(proto_path+'_stoch.prototxt',caffe_path, caffe.TEST)
 	
 		pass
 
-
+	def save_img_ind(self, X, path = 'images/img', tag = ''):
+		for idx in xrange(self.N):
+			sp.misc.imsave(path+'/images/img_'+str(self.indices[idx])+'_'+tag+'.jpg',np.rot90(X[idx].T,k=3))
+	
 	def load_db(self,mode='trial',dbtype='leveldb',dbno=1):
 		'''
 		Load the data base
 		'''
-		indices = []
+		self.indices = []
 		self.batch_size = 100
 		if mode=='trial':
-			indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
-			#indices = [1,10,100,150,42]
-			#indices = [13,42]
-			self.batch_size = 5
+			#self.indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
+			#self.indices = [1,10,100,150,42]
+			self.indices = [75]
+			self.batch_size = 1
 		if (dbtype=='leveldb'):
 
 			if dbno==1:
@@ -66,7 +70,7 @@ class CNN:
 
 			
 			for key, _ in db:
-				if count in indices or mode=='full':
+				if count in self.indices or mode=='full':
 					x, y = utils.get_cifar_image(db, str(key).zfill(5))
 					Xt += [x]
 					yt += [y]
@@ -87,7 +91,7 @@ class CNN:
 			
 			self.N = 0
 			for _, value in lmdb_cursor:
-				if count in indices or mode=='full':
+				if count in self.indices or mode=='full':
 					datum = caffe.proto.caffe_pb2.Datum()
 					datum.ParseFromString(value)
 					label = int(datum.label)
@@ -178,7 +182,7 @@ class CNN:
 			prob = prob[:,:,None,None]
 
 		for b in xrange(img_set.shape[0]/self.batch_size):
-			print 'Backprop Batch: ',b
+			#print 'Backprop Batch: ',b
 			input_batch = img_set[partition,:,:,:]
 			self.net.blobs[l_pen].diff[...] = prob[partition]
 			self.net._backward(list(self.net._layer_names).index(l_pen), 0)
@@ -260,7 +264,7 @@ class CNN:
 		prob_cnn = np.zeros((img_set.shape[0],10))
 		partition = np.arange(self.batch_size)
 		for b in xrange(img_set.shape[0]/self.batch_size):
-			print 'Batch: ', b, '\t', partition[0]
+			#print 'Batch: ', b, '\t', partition[0]
 			input_batch = img_set[partition,:,:,:]
 			self.net.blobs[l_first].reshape(*input_batch.shape)
 			self.net.blobs[l_first].data[...] = input_batch

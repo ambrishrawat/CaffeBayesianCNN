@@ -5,13 +5,14 @@
 !classes/
 !results/
 !results/*
+
 # Don't ignore models
 !models/
 !models/*
 models/vgg16_weights.h5
-!exp/
-!exp/*
-!exp/*/*
+!exps/
+!exps/*
+!exps/*/*
 # Don't ignore .gitignore
 !.gitignore
 
