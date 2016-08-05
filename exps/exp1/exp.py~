@@ -3,7 +3,7 @@ import caffe
 caffe.set_device(0)
 caffe.set_mode_gpu()
 
-src_path = '/home/ar773/CaffeBayesianCNN'
+src_path = '/home/ar773/CaffeBayesianCNN/exps/'
 models_path = '/home/ar773/CaffeBayesianCNN/models'
 
 from classes.CNN import CNN
@@ -17,15 +17,34 @@ def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 	#model = 'alldrop'
 	#model = 'fcdrop'	
 	model = 'nodrop'
+	stoch_bsize = 100
+	grad_steps = 200
 	
 	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
 	proto_path = models_path + '/'+model+'/lenet_'+model+'_deploy'
 	cnn = CNN()
 	cnn.load(proto_path=proto_path, caffe_path=caffe_path)
 	cnn.load_db(mode=mode,dbtype=dbtype,dbno=dbno)
+	c_prob1 = np.zeros((cnn.N,grad_steps, 10))
+
+	model = 'alldrop'
 	
-	#stoch_bsize = 100
-	grad_steps = 100
+	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
+	proto_path = models_path + '/'+model+'/lenet_'+model+'_deploy'
+	cnn2 = CNN()
+	cnn2.load(proto_path=proto_path, caffe_path=caffe_path)
+
+	mc_prob2 = np.zeros((cnn.N,grad_steps, stoch_bsize,10))
+	
+	model = 'fcdrop'
+	
+	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
+	proto_path = models_path + '/'+model+'/lenet_'+model+'_deploy'
+	cnn3 = CNN()
+	cnn3.load(proto_path=proto_path, caffe_path=caffe_path)
+
+	mc_prob3 = np.zeros((cnn.N,grad_steps, stoch_bsize,10))
+
 
 	'''
 	get adversarial label array correspondint to yt
@@ -35,8 +54,9 @@ def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 	c_prob : self.N x grad_step x stoch_bsize x probs_10
 	img_adv : self.N x grad_steps x 3 x 32 x 32
 	'''
-		
-	#c_prob = np.zeros((self.N,grad_steps, stoch_bsize,10))
+	tr_ = [cnn.label_names[y] for y in cnn.yt]
+	adv_ = [cnn.label_names[y] for y in yt_adv]
+	
 	img_adv = np.zeros((cnn.N, grad_steps, 3, 32, 32))
 
 	input_fool = cnn.Xt.copy()
@@ -46,7 +66,7 @@ def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 		Step 1: Set the data for the network for which you want the adversarial image
 		'''
 		prob = cnn.get_det_probs(img_set=input_fool)
-
+		c_prob1[:,gstep,:] = prob.copy()
 		
 		'''
 		Step 2: Set the probablisties for adversarial label
@@ -59,24 +79,32 @@ def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 			prob[:,yt_adv[idx]] -= 1.
 			
 		print gstep, '\t', corr, '\t', inn
+		
+		cnn2.set_data(input_fool)
+		prob_stoch = cnn2.get_stoch_probs(img_set=input_fool,stoch_bsize=100)
+		mc_prob2[:,gstep,:,:] = prob_stoch.copy()
 
+		cnn3.set_data(input_fool)
+		prob_stoch = cnn3.get_stoch_probs(img_set=input_fool,stoch_bsize=100)
+		mc_prob3[:,gstep,:,:] = prob_stoch.copy()
 		'''
 		Step 3: Backprop and add gradients
 		'''
 		input_grads = cnn.get_data_grads(input_fool,prob)
 		img_adv[:,gstep,:,:,:] = input_fool.copy()
 		#print 'NONZERO GRADS: ', np.count_nonzero(input_grads), '\t GSTEPS ',gstep
-		input_fool -= input_grads* 5.e-3
+		input_fool -= input_grads*7.e-3
 		cnn.save_img_ind(input_fool, path = src_path+'/exp1', tag = str(gstep))
 		
-		'''
-		save the images 
-		'''
-		#np.save(src_path+'/results/nn_100cprob',c_prob)
-		#np.save(src_path+'/results/nn_100imgadv',img_adv)
-		#np.save(src_path+'/results/nn_100ytadv',yt_adv)
-		#np.save(src_path+'/results/nn_100yt',self.yt)
-		pass
+	'''
+	save the images 
+	'''
+	np.save(src_path+'/exp1'+'/results/nodrop_prob',c_prob1)
+	np.save(src_path+'/exp1'+'/results/alldrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/fcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/fcdrop_prob',mc_prob3)
+
+	print tr_, adv_
 
 
 def exp2(model = 'zoo', dbtype = 'leveldb', dbno = 1, mode = 'trial'):

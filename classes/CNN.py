@@ -14,6 +14,7 @@ import pylab
 import utils
 import random
 import scipy as sp
+import pickle
 
 src_path = '/home/ar773/CaffeBayesianCNN'
 
@@ -27,22 +28,34 @@ class CNN:
 		#self.Xt
 		#self.yt
 		#self.N	
+
+		self.inv_P_ = np.load('/home/ar773/CIFARProcess/invP.npy')    #np.ones((3072,3072))
+		self.mean_ = np.load('/home/ar773/CIFARProcess/mean.npy')     #np.ones((3072,))
+		self.label_names = ['airplane', 'automobile', 'bird', 'cat', 'deer','dog', 'frog', 'horse', 'ship', 'truck']
 		pass
 
-
+	def set_data(self, X):
+		self.X = X
+		pass	
+	
 	def load(self, proto_path='', caffe_path=''):
 		'''
 		Load a model and it's corresponding bayesian one with a different prototxt file (with sample_weight:true)
 		'''
 
 		self.net = caffe.Net(proto_path+'.prototxt',caffe_path, caffe.TEST)
-		#self.net_bcnn = caffe.Net(proto_path+'_stoch.prototxt',caffe_path, caffe.TEST)
+		self.net_bcnn = caffe.Net(proto_path+'_stoch.prototxt',caffe_path, caffe.TEST)
 	
 		pass
 
 	def save_img_ind(self, X, path = 'images/img', tag = ''):
+		Xt = X.copy()
+		Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))
+		
+		Xt = np.dot(Xt,self.inv_P_) + self.mean_
+		Xt = Xt.reshape((Xt.shape[0],3,32,32))	
 		for idx in xrange(self.N):
-			sp.misc.imsave(path+'/images/img_'+str(self.indices[idx])+'_'+tag+'.jpg',np.rot90(X[idx].T,k=3))
+			sp.misc.imsave(path+'/images/img_'+str(self.indices[idx])+'_'+tag+'.jpg',np.rot90(Xt[idx].T,k=3))
 	
 	def load_db(self,mode='trial',dbtype='leveldb',dbno=1):
 		'''
@@ -53,7 +66,7 @@ class CNN:
 		if mode=='trial':
 			#self.indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
 			#self.indices = [1,10,100,150,42]
-			self.indices = [75]
+			self.indices = [1]
 			self.batch_size = 1
 		if (dbtype=='leveldb'):
 
