@@ -3,11 +3,12 @@ indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
 
 exp1 (the three models - alldrop, twodrop, nodrop)
 
-nodrop
+
 
 image	ind	adv	100 noise
-ship	1	truck	7.e-3
-
+ship	1	truck	7.e-3		nodrop
+ship	1	truck	2.e-3		alldrop
+ship	1	truck	3.e-4		fcdrop
 
 
 

@@ -32,10 +32,14 @@ class CNN:
 		self.inv_P_ = np.load('/home/ar773/CIFARProcess/invP.npy')    #np.ones((3072,3072))
 		self.mean_ = np.load('/home/ar773/CIFARProcess/mean.npy')     #np.ones((3072,))
 		self.label_names = ['airplane', 'automobile', 'bird', 'cat', 'deer','dog', 'frog', 'horse', 'ship', 'truck']
+		
 		pass
 
-	def set_data(self, X):
-		self.X = X
+	def set_data(self, Xt):
+		self.Xt = Xt
+		self.batch_size = 1
+		self.N = 1
+		self.indices = [1]
 		pass	
 	
 	def load(self, proto_path='', caffe_path=''):
