@@ -102,7 +102,7 @@ def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 	np.save(src_path+'/exp1'+'/results/nodrop_prob',c_prob1)
 	np.save(src_path+'/exp1'+'/results/alldrop_prob',mc_prob2)
 	np.save(src_path+'/exp1'+'/results/fcdrop_prob',mc_prob3)
-	np.save(src_path+'/exp1'+'/results/img_adv',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/img_adv',img_adv)
 
 	print tr_, adv_
 
