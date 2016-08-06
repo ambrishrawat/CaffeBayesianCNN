@@ -107,7 +107,7 @@ def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 		input_grads = cnn3.get_data_grads(input_fool,prob)
 		img_adv[:,gstep,:,:,:] = input_fool.copy()
 		#print 'NONZERO GRADS: ', np.count_nonzero(input_grads), '\t GSTEPS ',gstep
-		input_fool -= input_grads*2.e-4
+		input_fool -= input_grads*8.e-4
 		cnn3.save_img_ind(input_fool, path = src_path+'/exp3', tag = str(gstep))
 		
 	'''
