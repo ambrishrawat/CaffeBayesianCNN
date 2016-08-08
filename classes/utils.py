@@ -9,6 +9,13 @@ import plyvel
 import pickle
 import pylab
 
+#Global parameters shared across all models, lenel-none, lenet-ip-std, lenet-all-std, lenet-ip-mc and lenet-all-mc
+
+N = 200				#for full-mode set N to 10000 
+indices = np.load('/home/ar773/CaffeBayesianCNN/classes/indices.npy')[0:N]		#random permutation of 10000
+batch_size = 100			#batch size for lenet-none, lenel-ip-std, lenel-all-std
+stoch_bsize = 100				#mc for lenet-ip-mc and lenet-all-mc
+
 def softmax(w, t = 1.0):
 	'''
 	compute softmax

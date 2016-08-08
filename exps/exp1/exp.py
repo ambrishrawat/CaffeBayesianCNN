@@ -10,6 +10,117 @@ from classes.CNN import CNN
 import classes.utils as utils
 import numpy as np
 
+
+def fast_sgd(dbtype = 'leveldb', dbno = 1):
+	
+	'''
+	d_orig = CNN()
+	d_orig.load_orig()
+	d_orig.save_img_ind(d_orig.Xt, path = src_path+'/exp1/fast_sgd', tag = str(0), tr=False)
+	'''
+	
+	#load model 1	
+	model = 'nodrop'
+	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
+	proto_path = models_path + '/'+model+'/lenet_'+model+'_deploy'
+	cnn = CNN()
+	cnn.load(proto_path=proto_path, caffe_path=caffe_path)
+	cnn.load_db(dbtype=dbtype,dbno=dbno)
+	c_prob1 = np.zeros((cnn.N,2, 10))		#before and after fast_grad
+	
+	#load model 2
+	model = 'alldrop'	
+	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
+	proto_path = models_path + '/'+model+'/lenet_'+model+'_deploy'
+	cnn2 = CNN()
+	cnn2.load(proto_path=proto_path, caffe_path=caffe_path)
+	c_prob2 = np.zeros((cnn2.N, 2, 10))		#before and after fast_grad
+	mc_prob2 = np.zeros((cnn2.N, 2, utils.stoch_bsize,10))
+	
+	#load model 3
+	model = 'fcdrop'
+	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
+	proto_path = models_path + '/'+model+'/lenet_'+model+'_deploy'
+	cnn3 = CNN()
+	cnn3.load(proto_path=proto_path, caffe_path=caffe_path)
+	c_prob3 = np.zeros((cnn3.N,2, 10))
+	mc_prob3 = np.zeros((cnn3.N,2, utils.stoch_bsize,10))
+	
+	'''
+	get adversarial label array correspondint to yt
+	'''
+	yt_adv = utils.get_adv_label(cnn.yt)
+	'''
+	c_prob : self.N x grad_step x stoch_bsize x probs_10
+	img_adv : self.N x grad_steps x 3 x 32 x 32
+	'''
+	tr_ = [cnn.label_names[y] for y in cnn.yt]
+	adv_ = [cnn.label_names[y] for y in yt_adv]
+	
+	img_adv = np.zeros((cnn.N, 2, 3, 32, 32))
+	input_fool = cnn.Xt.copy()
+
+	#propagate the gradients to input image (inv-preprocessing)
+	#inv_P_ = np.load('/home/ar773/CaffeBayesianCNN/invP.npy')
+	#mean_ = np.load('/home/ar773/CaffeBayesianCNN/mean.npy')
+
+	for gstep in xrange(2):
+		'''
+		Step 1: Set the data for the network for which you want the adversarial image
+		'''
+		prob = cnn.get_det_probs(img_set=input_fool)
+		print prob.shape
+		c_prob1[:,gstep,:] = prob.copy()
+		
+		
+		'''
+		Step 2: Set the probablisties for adversarial label
+		'''
+		corr = 0.0
+		inn = 0.0
+		for idx in xrange(cnn.N):
+			#print np.sum(prob[idx,:])
+			corr += np.mean(prob[idx,cnn.yt[idx]])
+			inn += np.mean(prob[idx,yt_adv[idx]])
+			prob[idx,yt_adv[idx]] -= 1.
+		corr = float(corr)/float(cnn.N)
+		inn = float(inn)/float(cnn.N)
+		print gstep, '\t', corr, '\t', inn
+		
+		cnn2.set_data(input_fool)
+		prob_stoch = cnn2.get_stoch_probs(img_set=input_fool)
+		mc_prob2[:,gstep,:,:] = prob_stoch.copy()
+		
+
+		prob_ap = cnn2.get_det_probs(img_set=input_fool)
+		c_prob2[:,gstep,:] = prob_ap.copy()
+
+		cnn3.set_data(input_fool)
+		prob_stoch = cnn3.get_stoch_probs(img_set=input_fool)
+		mc_prob3[:,gstep,:,:] = prob_stoch.copy()
+		prob_ap = cnn3.get_det_probs(img_set=input_fool)
+		c_prob3[:,gstep,:] = prob_ap.copy()
+		
+		'''
+		Step 3: Backprop and add gradients
+		'''
+		input_grads = cnn.get_data_grads(input_fool,prob)
+		img_adv[:,gstep,:,:,:] = input_fool.copy()
+		input_fool -= input_grads*2.5
+		#cnn.save_img_ind(input_fool, path = src_path+'/exp1/fast_sgd', tag = str(gstep), tr = False)
+		
+	
+	#save the images 
+	
+	np.save(src_path+'/exp1'+'/results/fnodrop_prob',c_prob1)
+	np.save(src_path+'/exp1'+'/results/falldrop_ap_prob',c_prob2)
+	np.save(src_path+'/exp1'+'/results/ffcdrop_ap_prob',c_prob3)
+	np.save(src_path+'/exp1'+'/results/falldrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/ffcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/fimg_adv',img_adv)
+	
+	#print tr_, adv_
+
 def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
 	'''
 	get adversarial images

@@ -16,6 +16,7 @@ import random
 import scipy as sp
 import pickle
 
+
 src_path = '/home/ar773/CaffeBayesianCNN'
 
 class CNN:
@@ -28,18 +29,26 @@ class CNN:
 		#self.Xt
 		#self.yt
 		#self.N	
-
+		
 		self.inv_P_ = np.load('/home/ar773/CIFARProcess/invP.npy')    #np.ones((3072,3072))
 		self.mean_ = np.load('/home/ar773/CIFARProcess/mean.npy')     #np.ones((3072,))
 		self.label_names = ['airplane', 'automobile', 'bird', 'cat', 'deer','dog', 'frog', 'horse', 'ship', 'truck']
 		
+		self.indices = utils.indices
+		self.batch_size = utils.batch_size
+		self.stoch_bsize = utils.stoch_bsize		
+		self.N = utils.N
+		
 		pass
 
+
+	def load_orig(self):
+		X = np.load('/home/ar773/CIFARProcess/X_before_gcn.npy').reshape((10000,3,32,32))
+		self.Xt = np.array([X[i,:,:,:] for i in xrange(10000)])
+		
 	def set_data(self, Xt):
 		self.Xt = Xt
-		self.batch_size = 1
-		self.N = 1
-		self.indices = [1]
+		
 		pass	
 	
 	def load(self, proto_path='', caffe_path=''):
@@ -52,26 +61,22 @@ class CNN:
 	
 		pass
 
-	def save_img_ind(self, X, path = 'images/img', tag = ''):
+	def save_img_ind(self, X, path = 'images/img', tag = '', tr = True):
 		Xt = X.copy()
-		Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))
+		if tr == True:
+
+			Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))
 		
-		Xt = np.dot(Xt,self.inv_P_) + self.mean_
-		Xt = Xt.reshape((Xt.shape[0],3,32,32))	
+			Xt = np.dot(Xt,self.inv_P_) + self.mean_
+			Xt = Xt.reshape((Xt.shape[0],3,32,32))	
 		for idx in xrange(self.N):
 			sp.misc.imsave(path+'/images/img_'+str(self.indices[idx])+'_'+tag+'.jpg',np.rot90(Xt[idx].T,k=3))
 	
-	def load_db(self,mode='trial',dbtype='leveldb',dbno=1):
+	def load_db(self,dbtype='leveldb',dbno=1):
 		'''
 		Load the data base
 		'''
-		self.indices = []
-		self.batch_size = 100
-		if mode=='trial':
-			#self.indices = [1,10,100,150,42,21,75,57,37,111, 234 ,542, 356 ,653,567]
-			#self.indices = [1,10,100,150,42]
-			self.indices = [1]
-			self.batch_size = 1
+		
 		if (dbtype=='leveldb'):
 
 			if dbno==1:
@@ -83,15 +88,13 @@ class CNN:
 			count = 0
 			Xt = []
 			yt = []
-			self.N = 0
 
 			
 			for key, _ in db:
-				if count in self.indices or mode=='full':
+				if count in self.indices:
 					x, y = utils.get_cifar_image(db, str(key).zfill(5))
 					Xt += [x]
 					yt += [y]
-					self.N += 1
 				count+=1			
 			db.close()
 			self.Xt = np.array(Xt)
@@ -106,9 +109,8 @@ class CNN:
 			Xt = []
 			yt = []
 			
-			self.N = 0
 			for _, value in lmdb_cursor:
-				if count in self.indices or mode=='full':
+				if count in self.indices:
 					datum = caffe.proto.caffe_pb2.Datum()
 					datum.ParseFromString(value)
 					label = int(datum.label)
@@ -116,7 +118,6 @@ class CNN:
 					image = image.astype(np.float32)
 					Xt += [image]
 					yt += [label]
-					self.N +=1
 				count+=1
 			self.Xt = np.array(Xt)
 			self.yt = np.array(yt)
@@ -231,15 +232,15 @@ class CNN:
 			partition += self.batch_size*np.ones(self.batch_size,dtype='int64')
 		return img_grads
 
-	def get_stoch_probs(self,img_set, stoch_bsize=100):
+	def get_stoch_probs(self,img_set):
 		'''
 		get stochastic update for one imput image
 		'''
 		l_first = 'data'
 		l_last = list(self.net_bcnn._layer_names)[-1]
-		prob_bcnn = np.zeros((img_set.shape[0],stoch_bsize,10))
+		prob_bcnn = np.zeros((img_set.shape[0],self.stoch_bsize,10))
 		for idx in xrange(img_set.shape[0]):
-			input_bcnn = np.array([img_set[idx,:,:,:].copy() for _ in xrange(stoch_bsize)])
+			input_bcnn = np.array([img_set[idx,:,:,:].copy() for _ in xrange(self.stoch_bsize)])
 			self.net_bcnn.blobs[l_first].reshape(*input_bcnn.shape)
 			self.net_bcnn.blobs[l_first].data[...] = input_bcnn
 			self.net_bcnn.forward()
