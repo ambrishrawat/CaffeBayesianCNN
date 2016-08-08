@@ -11,11 +11,35 @@ import pylab
 
 #Global parameters shared across all models, lenel-none, lenet-ip-std, lenet-all-std, lenet-ip-mc and lenet-all-mc
 
-N = 200				#for full-mode set N to 10000 
-indices = np.load('/home/ar773/CaffeBayesianCNN/classes/indices.npy')[0:N]		#random permutation of 10000
-batch_size = 100			#batch size for lenet-none, lenel-ip-std, lenel-all-std
+N = 1			#for full-mode set N to 10000 
+indices =  [875] #np.load('/home/ar773/CaffeBayesianCNN/classes/indices.npy')[0:N]		#random permutation of 10000
+batch_size = 1		#batch size for lenet-none, lenel-ip-std, lenel-all-std
 stoch_bsize = 100				#mc for lenet-ip-mc and lenet-all-mc
 
+gcn_normalizer = np.load('/home/ar773/CaffeBayesianCNN/normalizers.npy')
+gcn_normalizer = np.array([ gcn_normalizer[i] for i in indices])
+
+gcn_mean = np.load('/home/ar773/CaffeBayesianCNN/mean_gcn.npy')
+gcn_mean = np.array([ gcn_mean[i] for i in indices])
+
+def backward_T(input_grads,inv_P_,mean_):
+	Xt = input_grads.copy()
+	Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))		
+	Xt = np.dot(Xt,inv_P_) + mean_
+	Xt *= gcn_normalizer[:,np.newaxis]
+	Xt = Xt + gcn_mean[:, np.newaxis]
+	Xt = Xt.reshape((Xt.shape[0],3,32,32))
+	return Xt
+
+def forward_T(input_orig,P_,mean_):
+	Xt = input_orig.copy()
+	Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))
+	Xt = Xt - gcn_mean[:, np.newaxis]
+	Xt /= gcn_normalizer[:,np.newaxis]
+	Xt = Xt - mean_
+	Xt = np.dot(Xt,P_)
+	Xt = Xt.reshape((Xt.shape[0],3,32,32))
+	return Xt
 def softmax(w, t = 1.0):
 	'''
 	compute softmax

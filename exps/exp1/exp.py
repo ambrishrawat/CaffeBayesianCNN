@@ -13,11 +13,11 @@ import numpy as np
 
 def fast_sgd(dbtype = 'leveldb', dbno = 1):
 	
-	'''
+	
 	d_orig = CNN()
 	d_orig.load_orig()
 	d_orig.save_img_ind(d_orig.Xt, path = src_path+'/exp1/fast_sgd', tag = str(0), tr=False)
-	'''
+	
 	
 	#load model 1	
 	model = 'nodrop'
@@ -58,16 +58,23 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 	adv_ = [cnn.label_names[y] for y in yt_adv]
 	
 	img_adv = np.zeros((cnn.N, 2, 3, 32, 32))
-	input_fool = cnn.Xt.copy()
+	input_orig = d_orig.Xt.copy()
 
 	#propagate the gradients to input image (inv-preprocessing)
-	#inv_P_ = np.load('/home/ar773/CaffeBayesianCNN/invP.npy')
-	#mean_ = np.load('/home/ar773/CaffeBayesianCNN/mean.npy')
-
+	inv_P_ = np.load('/home/ar773/CaffeBayesianCNN/invP.npy')
+	mean_ = np.load('/home/ar773/CaffeBayesianCNN/mean.npy')
+	P_ = np.load('/home/ar773/CaffeBayesianCNN/P.npy')
+	
 	for gstep in xrange(2):
+
 		'''
 		Step 1: Set the data for the network for which you want the adversarial image
 		'''
+		img_adv[:,gstep,:,:,:] = input_orig.copy()
+		#transform using P, mean
+		input_fool = utils.forward_T(input_orig,P_,mean_)
+		#print 'YODA', cnn.Xt - input_fool
+		#net forward
 		prob = cnn.get_det_probs(img_set=input_fool)
 		print prob.shape
 		c_prob1[:,gstep,:] = prob.copy()
@@ -105,20 +112,24 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 		Step 3: Backprop and add gradients
 		'''
 		input_grads = cnn.get_data_grads(input_fool,prob)
-		img_adv[:,gstep,:,:,:] = input_fool.copy()
-		input_fool -= input_grads*2.5
-		#cnn.save_img_ind(input_fool, path = src_path+'/exp1/fast_sgd', tag = str(gstep), tr = False)
+
+		#propagate grads through the transform
+		input_grads = utils.backward_T(input_grads,inv_P_,mean_)
+		
+		cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd', tag = str(gstep), tr = False)
+
+		input_orig -= input_grads*2.3e-2
 		
 	
 	#save the images 
-	
+	'''
 	np.save(src_path+'/exp1'+'/results/fnodrop_prob',c_prob1)
 	np.save(src_path+'/exp1'+'/results/falldrop_ap_prob',c_prob2)
 	np.save(src_path+'/exp1'+'/results/ffcdrop_ap_prob',c_prob3)
 	np.save(src_path+'/exp1'+'/results/falldrop_prob',mc_prob2)
 	np.save(src_path+'/exp1'+'/results/ffcdrop_prob',mc_prob3)
 	np.save(src_path+'/exp1'+'/results/fimg_adv',img_adv)
-	
+	'''
 	#print tr_, adv_
 
 def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):
