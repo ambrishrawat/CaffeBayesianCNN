@@ -11,7 +11,8 @@ import pylab
 
 #Global parameters shared across all models, lenel-none, lenet-ip-std, lenet-all-std, lenet-ip-mc and lenet-all-mc
 
-indices = np.load('/home/ar773/a.npy')[0:50]
+#indices = np.load('/home/ar773/a.npy')[0:50]
+indices = np.arange(10000)[0:100]
 N = indices.shape[0]
 		#for full-mode set N to 10000 
 #indices = np.load('/home/ar773/CaffeBayesianCNN/classes/indices.npy')[0:N]		#random permutation of 10000
@@ -19,7 +20,17 @@ N = indices.shape[0]
 batch_size = 50
 stoch_bsize = 100				#mc for lenet-ip-mc and lenet-all-mc
 
-#5.60957064317e-14
+#s = np.random.normal(-8.2984457782616281e-09,0.27796287433968719,(100,3,32,32))
+
+#-2.0016396251849e-08
+
+#0.27795847357736214
+
+def gen_noise(mean=0.0,var=0.1):
+	sigma = var**0.5
+	gauss = np.random.normal(mean,sigma,(3,32,32))
+	gauss = gauss.reshape(ch,row,col)
+	return gauss
 
 
 #indices = [2,875] 2.3e-2
@@ -33,21 +44,21 @@ gcn_mean = np.array([ gcn_mean[i] for i in indices])
 
 def backward_T(input_grads,inv_P_,mean_):
 	Xt = input_grads.copy()
-	Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))		
-	Xt = np.dot(Xt,inv_P_) + mean_
-	Xt *= gcn_normalizer[:,np.newaxis]
-	Xt = Xt + gcn_mean[:, np.newaxis]
-	Xt = Xt.reshape((Xt.shape[0],3,32,32))
+	#Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))		
+	#Xt = np.dot(Xt,inv_P_) + mean_
+	#Xt *= gcn_normalizer[:,np.newaxis]
+	#Xt = Xt + gcn_mean[:, np.newaxis]
+	#Xt = Xt.reshape((Xt.shape[0],3,32,32))
 	return Xt
 
 def forward_T(input_orig,P_,mean_):
 	Xt = input_orig.copy()
-	Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))
-	Xt = Xt - gcn_mean[:, np.newaxis]
-	Xt /= gcn_normalizer[:,np.newaxis]
-	Xt = Xt - mean_
-	Xt = np.dot(Xt,P_)
-	Xt = Xt.reshape((Xt.shape[0],3,32,32))
+	#Xt = Xt.reshape((Xt.shape[0],Xt.shape[1]*Xt.shape[2]*Xt.shape[3]))
+	#Xt = Xt - gcn_mean[:, np.newaxis]
+	#Xt /= gcn_normalizer[:,np.newaxis]
+	#Xt = Xt - mean_
+	#Xt = np.dot(Xt,P_)
+	#Xt = Xt.reshape((Xt.shape[0],3,32,32))
 	return Xt
 def softmax(w, t = 1.0):
 	'''
