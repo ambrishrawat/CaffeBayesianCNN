@@ -11,12 +11,16 @@ import classes.utils as utils
 import numpy as np
 
 
-def fast_sgd(dbtype = 'leveldb', dbno = 1):
+def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
+	
+	inv_P_ = np.load('/home/ar773/CaffeBayesianCNN/invP.npy')
+	mean_ = np.load('/home/ar773/CaffeBayesianCNN/mean.npy')
+	P_ = np.load('/home/ar773/CaffeBayesianCNN/zca_P.npy')
 	
 	
 	d_orig = CNN()
 	d_orig.load_orig()
-	d_orig.save_img_ind(d_orig.Xt, path = src_path+'/exp1/fast_sgd', tag = str(0), tr=False)
+	#d_orig.save_img_ind(d_orig.Xt, path = src_path+'/exp1/fast_sgd', tag = str(0), tr=False)
 	
 	
 	#load model 1	
@@ -28,6 +32,13 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 	cnn.load_db(dbtype=dbtype,dbno=dbno)
 	c_prob1 = np.zeros((cnn.N,2, 10))		#before and after fast_grad
 	
+
+	#d1 = utils.forward_T(d_orig.Xt,P_,mean_)	
+	#d2 = np.load('/home/ar773/CIFARProcess/X_after_zca.npy').reshape((10000,3,32,32))
+	#d2 = np.array([d2[ix,:,:,:] for ix in utils.indices])
+	#print np.linalg.norm(cnn.Xt-d2)
+	#return
+
 	#load model 2
 	model = 'alldrop'	
 	caffe_path = models_path + '/'+model+'/lenet_'+model+'_iter_100000.caffemodel'
@@ -60,10 +71,6 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 	img_adv = np.zeros((cnn.N, 2, 3, 32, 32))
 	input_orig = d_orig.Xt.copy()
 
-	#propagate the gradients to input image (inv-preprocessing)
-	inv_P_ = np.load('/home/ar773/CaffeBayesianCNN/invP.npy')
-	mean_ = np.load('/home/ar773/CaffeBayesianCNN/mean.npy')
-	P_ = np.load('/home/ar773/CaffeBayesianCNN/P.npy')
 	
 	for gstep in xrange(2):
 
@@ -80,9 +87,6 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 		c_prob1[:,gstep,:] = prob.copy()
 		
 		
-		'''
-		Step 2: Set the probablisties for adversarial label
-		'''
 		corr = 0.0
 		inn = 0.0
 		for idx in xrange(cnn.N):
@@ -92,25 +96,40 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 			prob[idx,yt_adv[idx]] -= 1.
 		corr = float(corr)/float(cnn.N)
 		inn = float(inn)/float(cnn.N)
-		print gstep, '\t', corr, '\t', inn
+		print gstep, ' \t no-drop ', corr, '\t', inn
 		
 		cnn2.set_data(input_fool)
 		prob_stoch = cnn2.get_stoch_probs(img_set=input_fool)
 		mc_prob2[:,gstep,:,:] = prob_stoch.copy()
 		
-
 		prob_ap = cnn2.get_det_probs(img_set=input_fool)
 		c_prob2[:,gstep,:] = prob_ap.copy()
+		corr = 0.0
+		inn = 0.0
+		for idx in xrange(cnn.N):
+			#print np.sum(prob[idx,:])
+			corr += np.mean(prob_ap[idx,cnn.yt[idx]])
+			inn += np.mean(prob_ap[idx,yt_adv[idx]])
+		corr = float(corr)/float(cnn.N)
+		inn = float(inn)/float(cnn.N)
+		print gstep, '\t al-drop ', corr, '\t', inn
+
 
 		cnn3.set_data(input_fool)
 		prob_stoch = cnn3.get_stoch_probs(img_set=input_fool)
 		mc_prob3[:,gstep,:,:] = prob_stoch.copy()
 		prob_ap = cnn3.get_det_probs(img_set=input_fool)
 		c_prob3[:,gstep,:] = prob_ap.copy()
+		corr = 0.0
+		inn = 0.0
+		for idx in xrange(cnn.N):
+			#print np.sum(prob[idx,:])
+			corr += np.mean(prob_ap[idx,cnn.yt[idx]])
+			inn += np.mean(prob_ap[idx,yt_adv[idx]])
+		corr = float(corr)/float(cnn.N)
+		inn = float(inn)/float(cnn.N)
+		print gstep, '\t fc-drop ', corr, '\t', inn
 		
-		'''
-		Step 3: Backprop and add gradients
-		'''
 		input_grads = cnn.get_data_grads(input_fool,prob)
 
 		#propagate grads through the transform
@@ -118,18 +137,18 @@ def fast_sgd(dbtype = 'leveldb', dbno = 1):
 		
 		cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd', tag = str(gstep), tr = False)
 
-		input_orig -= input_grads*2.3e-2
+		input_orig -= input_grads*0.7e-1
 		
 	
 	#save the images 
-	'''
-	np.save(src_path+'/exp1'+'/results/fnodrop_prob',c_prob1)
-	np.save(src_path+'/exp1'+'/results/falldrop_ap_prob',c_prob2)
-	np.save(src_path+'/exp1'+'/results/ffcdrop_ap_prob',c_prob3)
-	np.save(src_path+'/exp1'+'/results/falldrop_prob',mc_prob2)
-	np.save(src_path+'/exp1'+'/results/ffcdrop_prob',mc_prob3)
-	np.save(src_path+'/exp1'+'/results/fimg_adv',img_adv)
-	'''
+	
+	np.save(src_path+'/exp1'+'/results/fbnodrop_prob',c_prob1)
+	np.save(src_path+'/exp1'+'/results/fballdrop_ap_prob',c_prob2)
+	np.save(src_path+'/exp1'+'/results/fbfcdrop_ap_prob',c_prob3)
+	np.save(src_path+'/exp1'+'/results/fballdrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/fbfcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/fbimg_adv',img_adv)
+	
 	#print tr_, adv_
 
 def exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 1, mode = 'trial'):

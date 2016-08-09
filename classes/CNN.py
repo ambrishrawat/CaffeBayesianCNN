@@ -30,8 +30,8 @@ class CNN:
 		#self.yt
 		#self.N	
 		
-		self.inv_P_ = np.load('/home/ar773/CIFARProcess/invP.npy')    #np.ones((3072,3072))
-		self.mean_ = np.load('/home/ar773/CIFARProcess/mean.npy')     #np.ones((3072,))
+		#self.inv_P_ = np.load('/home/ar773/CIFARProcess/invP.npy')    #np.ones((3072,3072))
+		#self.mean_ = np.load('/home/ar773/CIFARProcess/mean.npy')     #np.ones((3072,))
 		self.label_names = ['airplane', 'automobile', 'bird', 'cat', 'deer','dog', 'frog', 'horse', 'ship', 'truck']
 		
 		self.indices = utils.indices
@@ -45,6 +45,8 @@ class CNN:
 	def load_orig(self):
 		X = np.load('/home/ar773/CIFARProcess/X_before_gcn.npy').reshape((10000,3,32,32))
 		self.Xt = np.array([X[i,:,:,:] for i in self.indices])
+		print self.Xt.shape
+		
 		
 	def set_data(self, Xt):
 		self.Xt = Xt

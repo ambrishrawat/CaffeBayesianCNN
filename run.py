@@ -3,7 +3,7 @@ import caffe
 caffe.set_device(0)
 caffe.set_mode_gpu()
 
-from exps.exp1.exp import fast_sgd
+from exps.exp1.exp import fast_sgd_fullback
 
 if __name__ == "__main__":
 	
@@ -16,4 +16,4 @@ if __name__ == "__main__":
 	#exp_adv(model = 'nodrop', dbtype = 'leveldb', dbno = 3, mode = 'trial')
 
 
-	fast_sgd()
+	fast_sgd_fullback()
