@@ -138,7 +138,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 		#propagate grads through the transform
 		input_grads = utils.backward_T(input_grads,inv_P_,mean_)
 			
-		cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd_plus_slow_noise', tag = str(gstep), tr = False)
+		#cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd_plus_slow_noise', tag = str(gstep), tr = False)
 	
 		input_orig -= input_grads*4.2e-2
 
@@ -146,12 +146,12 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	
 	#save the images 
 	
-	np.save(src_path+'/exp1'+'/results/sminus_noise_fbnodrop_prob',c_prob1)
-	np.save(src_path+'/exp1'+'/results/sminus_noise_fballdrop_ap_prob',c_prob2)
-	np.save(src_path+'/exp1'+'/results/sminus_noise_fbfcdrop_ap_prob',c_prob3)
-	np.save(src_path+'/exp1'+'/results/sminus_noise_fballdrop_prob',mc_prob2)
-	np.save(src_path+'/exp1'+'/results/sminus_noise_fbfcdrop_prob',mc_prob3)
-	np.save(src_path+'/exp1'+'/results/sminus_noise_fbimg_adv',img_adv)
+	np.save(src_path+'/exp1'+'/results/s2minus_noise_fbnodrop_prob',c_prob1)
+	np.save(src_path+'/exp1'+'/results/s2minus_noise_fballdrop_ap_prob',c_prob2)
+	np.save(src_path+'/exp1'+'/results/s2minus_noise_fbfcdrop_ap_prob',c_prob3)
+	np.save(src_path+'/exp1'+'/results/s2minus_noise_fballdrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/s2minus_noise_fbfcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/s2minus_noise_fbimg_adv',img_adv)
 	
 	#print tr_, adv_
 
