@@ -150,7 +150,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	np.save(src_path+'/exp1'+'/results/plus_fbfcdrop_ap_prob',c_prob3)
 	np.save(src_path+'/exp1'+'/results/plus_fballdrop_prob',mc_prob2)
 	np.save(src_path+'/exp1'+'/results/plus_fbfcdrop_prob',mc_prob3)
-	np.save(src_path+'/exp1'+'/results/inv_zca_fbimg_adv',img_adv)
+	np.save(src_path+'/exp1'+'/results/plus_fbimg_adv',img_adv)
 	
 	#print tr_, adv_
 
