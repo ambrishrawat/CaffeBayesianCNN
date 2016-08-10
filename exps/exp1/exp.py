@@ -144,7 +144,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 			
 		cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd_plus_slow_noise', tag = str(gstep), tr = False)
 	
-		input_orig -= input_grads*0.4
+		input_orig -= input_grads*0.09
 		
 	
 	#save the images 
