@@ -98,7 +98,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 		corr = float(corr)/float(cnn.N)
 		inn = float(inn)/float(cnn.N)
 		print gstep, ' \t no-drop ', corr, '\t', inn
-		'''
+		
 		
 		cnn2.set_data(input_fool)
 		prob_stoch = cnn2.get_stoch_probs(img_set=input_fool)
@@ -131,7 +131,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 		corr = float(corr)/float(cnn.N)
 		inn = float(inn)/float(cnn.N)
 		print gstep, '\t fc-drop ', corr, '\t', inn
-		'''
+		
 		input_grads = cnn.get_data_grads(input_fool,prob)
 
 		#propagate grads through the transform
@@ -146,11 +146,11 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	#save the images 
 	
 	np.save(src_path+'/exp1'+'/results/plus_fbnodrop_prob',c_prob1)
-	#np.save(src_path+'/exp1'+'/results/plus_fballdrop_ap_prob',c_prob2)
-	#np.save(src_path+'/exp1'+'/results/plus_fbfcdrop_ap_prob',c_prob3)
-	#np.save(src_path+'/exp1'+'/results/plus_fballdrop_prob',mc_prob2)
-	#np.save(src_path+'/exp1'+'/results/plus_fbfcdrop_prob',mc_prob3)
-	#np.save(src_path+'/exp1'+'/results/inv_zca_fbimg_adv',img_adv)
+	np.save(src_path+'/exp1'+'/results/plus_fballdrop_ap_prob',c_prob2)
+	np.save(src_path+'/exp1'+'/results/plus_fbfcdrop_ap_prob',c_prob3)
+	np.save(src_path+'/exp1'+'/results/plus_fballdrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/plus_fbfcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/inv_zca_fbimg_adv',img_adv)
 	
 	#print tr_, adv_
 
