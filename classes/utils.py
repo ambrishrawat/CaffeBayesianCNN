@@ -11,11 +11,11 @@ import pylab
 
 #Global parameters shared across all models, lenel-none, lenet-ip-std, lenet-all-std, lenet-ip-mc and lenet-all-mc
 
-indices =  np.load('/home/ar773/a.npy')[0:100]
+#indices =  np.load('/home/ar773/a.npy')[0:100]
 indices = np.array([1])
 #indices = np.arange(10000)
 N = indices.shape[0]
-		#for full-mode set N to 10000 
+#for full-mode set N to 10000 
 #indices = np.load('/home/ar773/CaffeBayesianCNN/classes/indices.npy')[0:N]		#random permutation of 10000
 #batch_size = 2	#batch size for lenet-none, lenel-ip-std, lenel-all-std
 batch_size = 1
