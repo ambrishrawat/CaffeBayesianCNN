@@ -3,7 +3,7 @@ import caffe
 caffe.set_device(0)
 caffe.set_mode_gpu()
 
-from exps.exp3.exp import fast_sgd_fullback
+from exps.exp1.exp import fast_sgd_fullback
 
 if __name__ == "__main__":
 	
