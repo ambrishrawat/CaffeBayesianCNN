@@ -72,8 +72,8 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	
 	img_adv = np.zeros((cnn.N, gsteps, 3, 32, 32))
 	input_orig = d_orig.Xt.copy()
-	input_orig = np.random.normal(121.52932,4103.8027,(1,3,32,32))
-	#input_orig = np.random.normal(-8.2984457782616281e-09,0.27796287433968719,(cnn.N,3,32,32))	
+	#input_orig = np.random.normal(121.52932,4103.8027,(1,3,32,32))
+	input_orig = np.random.normal(-8.2984457782616281e-09,0.27796287433968719,(cnn.N,3,32,32))	
 	#input_orig = cnn.Xt.copy()
 	#input_orig = np.load('noise.npy')
 	
@@ -144,17 +144,17 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 			
 		cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd_plus_slow_noise', tag = str(gstep), tr = False)
 	
-		input_orig -= input_grads*0.09
+		input_orig -= input_grads*0.9e-3
 		
 	
 	#save the images 
 	
-	np.save(src_path+'/exp1'+'/results/n_fp_fbnodrop_prob',c_prob1)
-	np.save(src_path+'/exp1'+'/results/n_fp_fballdrop_ap_prob',c_prob2)
-	np.save(src_path+'/exp1'+'/results/n_fp_fbfcdrop_ap_prob',c_prob3)
-	np.save(src_path+'/exp1'+'/results/n_fp_fballdrop_prob',mc_prob2)
-	np.save(src_path+'/exp1'+'/results/n_fp_fbfcdrop_prob',mc_prob3)
-	np.save(src_path+'/exp1'+'/results/n_fp_fbimg_adv',img_adv)
+	np.save(src_path+'/exp1'+'/results/n3_fp_fbnodrop_prob',c_prob1)
+	np.save(src_path+'/exp1'+'/results/n3_fp_fballdrop_ap_prob',c_prob2)
+	np.save(src_path+'/exp1'+'/results/n3_fp_fbfcdrop_ap_prob',c_prob3)
+	np.save(src_path+'/exp1'+'/results/n3_fp_fballdrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/n3_fp_fbfcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/n3_fp_fbimg_adv',img_adv)
 	
 	print tr_, adv_
 
