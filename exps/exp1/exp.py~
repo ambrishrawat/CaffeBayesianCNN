@@ -72,8 +72,9 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	
 	img_adv = np.zeros((cnn.N, gsteps, 3, 32, 32))
 	input_orig = d_orig.Xt.copy()
-	#input_orig = np.random.normal(121.52932,4103.8027,(1,3,32,32))
-	input_orig = np.random.normal(-8.2984457782616281e-09,0.27796287433968719,(cnn.N,3,32,32))	
+	input_orig = np.random.normal(121.52932,4103.8027,(1,3,32,32))
+
+	#input_orig = np.random.normal(-8.2984457782616281e-09,0.27796287433968719,(cnn.N,3,32,32))	
 	#input_orig = cnn.Xt.copy()
 	#input_orig = np.load('noise.npy')
 	
@@ -144,7 +145,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 			
 		cnn.save_img_ind(input_orig, path = src_path+'/exp1/fast_sgd_plus_slow_noise', tag = str(gstep), tr = False)
 	
-		input_orig -= input_grads*1.e-3
+		input_orig -= input_grads*0.09
 		
 	
 	#save the images 
