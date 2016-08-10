@@ -31,7 +31,7 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	cnn.load(proto_path=proto_path, caffe_path=caffe_path)
 	cnn.load_db(dbtype=dbtype,dbno=dbno)
 	c_prob1 = np.zeros((cnn.N,gsteps, 10))		#before and after fast_grad
-	np.save(src_path+'/exp1'+'/results/yt_fb',cnn.yt)
+	np.save(src_path+'/exp1'+'/results/yt_sfb',cnn.yt)
 	
 	#d1 = utils.forward_T(d_orig.Xt,P_,mean_)	
 	#d2 = np.load('/home/ar773/CIFARProcess/X_after_zca.npy').reshape((10000,3,32,32))
@@ -145,12 +145,12 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	
 	#save the images 
 	
-	np.save(src_path+'/exp1'+'/results/splus_fbnodrop_prob',c_prob1)
-	np.save(src_path+'/exp1'+'/results/splus_fballdrop_ap_prob',c_prob2)
-	np.save(src_path+'/exp1'+'/results/splus_fbfcdrop_ap_prob',c_prob3)
-	np.save(src_path+'/exp1'+'/results/splus_fballdrop_prob',mc_prob2)
-	np.save(src_path+'/exp1'+'/results/splus_fbfcdrop_prob',mc_prob3)
-	np.save(src_path+'/exp1'+'/results/splus_fbimg_adv',img_adv)
+	np.save(src_path+'/exp1'+'/results/sminus_fbnodrop_prob',c_prob1)
+	np.save(src_path+'/exp1'+'/results/sminus_fballdrop_ap_prob',c_prob2)
+	np.save(src_path+'/exp1'+'/results/sminus_fbfcdrop_ap_prob',c_prob3)
+	np.save(src_path+'/exp1'+'/results/sminus_fballdrop_prob',mc_prob2)
+	np.save(src_path+'/exp1'+'/results/sminus_fbfcdrop_prob',mc_prob3)
+	np.save(src_path+'/exp1'+'/results/sminus_fbimg_adv',img_adv)
 	
 	#print tr_, adv_
 

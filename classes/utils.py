@@ -11,7 +11,8 @@ import pylab
 
 #Global parameters shared across all models, lenel-none, lenet-ip-std, lenet-all-std, lenet-ip-mc and lenet-all-mc
 
-indices = np.array([2]) #np.load('/home/ar773/a.npy')[2]
+indices =  np.load('/home/ar773/a.npy')[0:100]
+indices = np.array([1])
 #indices = np.arange(10000)
 N = indices.shape[0]
 		#for full-mode set N to 10000 
