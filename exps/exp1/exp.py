@@ -31,8 +31,8 @@ def fast_sgd_fullback(dbtype = 'leveldb', dbno = 1):
 	cnn.load(proto_path=proto_path, caffe_path=caffe_path)
 	cnn.load_db(dbtype=dbtype,dbno=dbno)
 	c_prob1 = np.zeros((cnn.N,gsteps, 10))		#before and after fast_grad
-	np.save(src_path+'/exp1'+'/results/ytv_sfb_noise2',cnn.yt)
-	
+	np.save(src_path+'/exp1'+'/results/fin_yt.npy',cnn.yt)
+	asdsa
 	#d1 = utils.forward_T(d_orig.Xt,P_,mean_)	
 	#d2 = np.load('/home/ar773/CIFARProcess/X_after_zca.npy').reshape((10000,3,32,32))
 	#d2 = np.array([d2[ix,:,:,:] for ix in utils.indices])
