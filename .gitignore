@@ -24,3 +24,4 @@ models/vgg16_weights.h5
 !*.txt
 !*.prototxt
 !*.npy
+!*.ipynb
